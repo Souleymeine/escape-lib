@@ -32,10 +32,10 @@ endif
 # https://stackoverflow.com/questions/20763629/test-whether-a-directory-exists-inside-a-makefile
 
 debug: | $(BUILD_DIR)
-	cd build && $(CC) ../$(SOURCES) $(DEBUG_OPTS) $(TMP_OPTS)
+	cd build && $(CC) $(addprefix ../, $(SOURCES)) $(DEBUG_OPTS) $(TMP_OPTS)
 
 release: | $(BUILD_DIR)
-	cd build && $(CC) ../$(SOURCES) $(RELEASE_OPTS) $(TMP_OPTS)
+	cd build && $(CC) $(addprefix ../, $(SOURCES)) $(RELEASE_OPTS) $(TMP_OPTS)
 
 clean:
 ifeq ($(shell test -d $(BUILD_DIR) && echo 1 || echo 0), 1)
