@@ -9,8 +9,12 @@ SOURCES = $(wildcard $(SRC_DIR)/*.c)
 
 # Produce temp files XOR Compile
 
-DEBUG_OPTS   = -I. -std=c23 -Wall -Wextra -DDEBUG -O0 -g3 -fsanitize=address,leak,undefined
-RELEASE_OPTS = -I. -std=c23 -Wall -Wextra -Werror -O3
+DEBUG_OPTS   = -I. -std=c2x -Wall -Wextra -DDEBUG -O0 -g3
+RELEASE_OPTS = -I. -std=c2x -Wall -Wextra -Werror -O3
+
+ifneq ($(OS),Windows_NT)
+	DEBUG_OPTS   += -fsanitize=address,leak,undefined
+endif
 
 TMP_OPTS     =
 ifeq ($(tmp),true)
