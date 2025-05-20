@@ -5,7 +5,7 @@
 
 #if _WIN32
 #include <windows.h>
-#elif __linux__
+#elif __unix__
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <termios.h>
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 	// Just in case?
 	SetConsoleMode(h_out, original_out_mode);
 	SetConsoleMode(h_in, original_in_mode);
-#elif __linux__
+#elif __unix__
 	term_attr.c_lflag |= ECHO;
 	tcsetattr(STDIN_FILENO, 0, &term_attr);
 #endif
