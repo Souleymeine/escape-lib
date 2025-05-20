@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #if _WIN32
-#include <stdlib.h>
 #include <windows.h>
 #elif __linux__
 #include <sys/ioctl.h>
@@ -29,11 +28,21 @@ int main(int argc, char **argv) {
 	unsigned short cols, rows;
 
 #if _WIN32
-	system("");
-	CONSOLE_SCREEN_BUFFER_INFO info;
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
-	cols = info.dwMaximumWindowSize.X;
-	rows = info.dwMaximumWindowSize.Y;
+	HANDLE h_in = GetStdHandle(STD_INPUT_HANDLE);
+	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	DWORD original_in_mode;
+	DWORD original_out_mode;
+	GetConsoleMode(h_in, &original_in_mode);
+	GetConsoleMode(h_out, &original_out_mode);
+
+	SetConsoleMode(h_out, original_out_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	SetConsoleMode(h_in, (original_in_mode | ENABLE_VIRTUAL_TERMINAL_INPUT) & (~ENABLE_ECHO_INPUT));
+
+	CONSOLE_SCREEN_BUFFER_INFO buf_info;
+	GetConsoleScreenBufferInfo(h_out, &buf_info);
+	cols = buf_info.dwMaximumWindowSize.X;
+	rows = buf_info.dwMaximumWindowSize.Y;
 #else
 	struct termios term_attr;
 	tcgetattr(STDIN_FILENO, &term_attr);
@@ -87,7 +96,11 @@ int main(int argc, char **argv) {
 	getchar();
 	printf("\x1b[?1049l"); // Hides the alternate buffer
 	printf("\x1b[?25h"); // Shows the cursor
-#if __linux__
+#if _WIN32
+	// Just in case?
+	SetConsoleMode(h_out, original_out_mode);
+	SetConsoleMode(h_in, original_in_mode);
+#elif __linux__
 	term_attr.c_lflag |= ECHO;
 	tcsetattr(STDIN_FILENO, 0, &term_attr);
 #endif
