@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	GetConsoleMode(h_out, &original_out_mode);
 
 	SetConsoleMode(h_out, original_out_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-	SetConsoleMode(h_in, original_in_mode | ENABLE_VIRTUAL_TERMINAL_INPUT);
+	SetConsoleMode(h_in, (original_in_mode | ENABLE_VIRTUAL_TERMINAL_INPUT) & (~ENABLE_ECHO_INPUT));
 
 	CONSOLE_SCREEN_BUFFER_INFO buf_info;
 	GetConsoleScreenBufferInfo(h_out, &buf_info);
