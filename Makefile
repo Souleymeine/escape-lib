@@ -6,6 +6,8 @@ OUT_NAME = test
 
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 
+# TODO : Add full support for MSVC (still requires some tweaks)
+
 cc_is_gcc_or_clang = false
 cc_is_msvc = false
 ifeq ($(CC),gcc)
