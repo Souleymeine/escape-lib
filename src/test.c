@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-
 #if _WIN32
 #include <windows.h>
 #elif __unix__
@@ -12,7 +11,7 @@
 #endif
 
 #if !(_WIN32)
-#define max(x, y) x <= y ? x : y
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
 #define LEFT  0
@@ -89,7 +88,7 @@ int main(int argc, char **argv) {
 
 	printf("\x1b[%hu;%huH", middle_line, left_gap_len + 1); // We go to y, x (line, column)
 	for (int i = 0; i < label_len; ++i) {
-		uint8_t val = max(232 + ((float)i / label_len) * 24, 255); // 8 bit color ID
+		uint8_t val = min(232 + ((float)i / label_len) * 24, 255); // 8 bit color ID
 		printf("\x1b[38;5;%hhu;1;3m%c\x1b[m", val, label[i]); // Bold, italic and grayscaled gradient colored
 	}
 
