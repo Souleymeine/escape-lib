@@ -1,6 +1,6 @@
 # Escape Lib
 
-Local repository for now.
+**NOTE : This project is nothing more than a draft for now.**
 
 TODO : Add project description.
 
