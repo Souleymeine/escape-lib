@@ -14,6 +14,10 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
+// https://stackoverflow.com/questions/8292852/the-best-way-to-define-a-between-macro-in-c
+#define between(x, x_min, x_max) ((x) > (x_min) && (x) < (x_max))
+
+
 #define LEFT  0
 #define RIGHT 1
 
@@ -22,6 +26,41 @@
 
 const bool HORIZ_MARGIN_OF_ERR_ALIGN = LEFT;
 const bool VIRT_MARGIN_OF_ERR_ALIGN  = BOTTOM;
+
+
+typedef enum: char {
+	CONTINUATION, ASCII, DOUBLE_BEGIN, TRIPLE_BEGIN, QUADRUPLE_BEGIN, INVALID = -1,
+} utf8_char_type;
+
+
+utf8_char_type get_utf8_char_type(const unsigned char c) {
+	if (c < 0x7F)                    return ASCII;
+	else if (between(c, 0x80, 0xBF)) return CONTINUATION;
+	else if (between(c, 0xC0, 0xDF)) return DOUBLE_BEGIN;
+	else if (between(c, 0xE0, 0xEF)) return TRIPLE_BEGIN;
+	else if (between(c, 0xF0, 0xF7)) return QUADRUPLE_BEGIN; // Unlikely but defined by utf8
+	else                             return INVALID;
+}
+
+size_t utf8_strlen(const char* str, const size_t str_len) {
+	size_t len = 0;
+
+	utf8_char_type uchar_i_type = INVALID;
+	size_t i = 0;
+	while (i < str_len) {
+		uchar_i_type = get_utf8_char_type(str[i]);
+		if (uchar_i_type == INVALID) {
+			return -1;
+		} else {
+			++len;
+			i += uchar_i_type;
+		}
+	}
+
+	return len;
+}
+
+// utf8_char_type get_char_type
 
 int main(int argc, char **argv) {
 	unsigned short cols, rows;
@@ -66,14 +105,16 @@ int main(int argc, char **argv) {
 	printf("cols : %hu, rows: %hu\n", cols, rows);
 
 	const char* label = (argc == 1 ? "Hello, World!" : argv[1]);
-	const int label_len = strlen(label);
+	const size_t label_code_point_len = strlen(label);
+	const int label_code_unit_len = utf8_strlen(label, label_code_point_len);
 
 	// When the parity of the label's length and the number of columns isn't the same, a slight offset will be produced
 	// either left or right, due to the nature of the integer division.
 	// We look for it and check if the HORIZ_MARGIN_OF_ERR_ALIGN property is opposite to the offset
 	// We can the apply a correction of + 1 or - 1 to match the desired off-centered alignment
-	unsigned short left_gap_len = (cols / 2) - (label_len / 2); 
-	const unsigned short right_gap_len = cols - (left_gap_len + label_len);
+	
+	unsigned short left_gap_len = (cols / 2) - (label_code_unit_len / 2); 
+	const unsigned short right_gap_len = cols - (left_gap_len + label_code_unit_len);
 	
 	const char align_error = left_gap_len - right_gap_len; // -1 if left-centered, 1 if right-centered, 0 if perfectly centered
 
@@ -87,9 +128,29 @@ int main(int argc, char **argv) {
 	const unsigned short middle_line = rows / 2 + virt_margin_of_error;
 
 	printf("\x1b[%hu;%huH", middle_line, left_gap_len + 1); // We go to y, x (line, column)
-	for (int i = 0; i < label_len; ++i) {
-		uint8_t val = min(232 + ((float)i / label_len) * 24, 255); // 8 bit color ID
-		printf("\x1b[38;5;%hhu;1;3m%c\x1b[m", val, label[i]); // Bold, italic and grayscaled gradient colored
+
+
+	utf8_char_type uchar_i_type = INVALID;
+	uint8_t val = 0;
+	size_t code_point_i = 0, code_unit_i = 0;
+
+	while (code_point_i < label_code_point_len) {
+		val = min(232 + ((float)code_unit_i / label_code_unit_len) * 24, 255); // 8 bit color ID
+		const unsigned char uchar_i = label[code_point_i];
+		uchar_i_type = get_utf8_char_type(uchar_i);
+		
+		if (uchar_i_type == INVALID) {
+			return -1;
+		} else {
+			if (code_point_i > 0) {
+				printf("\x1b[m"); // End the sequence
+			}
+			printf("\x1b[38;5;%hhu;1;3m%c", val, uchar_i); // Begins the sequence : Bold, italic and grayscaled gradient colored
+			printf("%.*s", uchar_i_type - 1, label + code_point_i + 1); // prints the next continuation chars (if any)
+
+			++code_unit_i;
+			code_point_i += uchar_i_type;
+		}
 	}
 
 	getchar();
