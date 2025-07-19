@@ -81,6 +81,10 @@ int main(int argc, char **argv) {
 	GetConsoleScreenBufferInfo(h_out, &buf_info);
 	cols = buf_info.dwMaximumWindowSize.X;
 	rows = buf_info.dwMaximumWindowSize.Y;
+
+	UINT original_output_cp = GetConsoleOutputCP();
+	SetConsoleOutputCP(CP_UTF8);
+
 #else
 	struct termios term_attr;
 	tcgetattr(STDIN_FILENO, &term_attr);
@@ -104,6 +108,11 @@ int main(int argc, char **argv) {
 
 	printf("cols : %hu, rows: %hu\n", cols, rows);
 
+	/* NOTE : utf8 commandline argument on Windows requires powershell/cmd.exe to use the 65001 code page,
+	 * which needs to be set before the program is executed, obviously, but it is not the default,
+	 * so parsing argument with characters outside the ASCII range will lead to some weird bugs.
+	 * Interesting stack overflow post on the subject :
+	 * https://stackoverflow.com/questions/57131654/using-utf-8-encoding-chcp-65001-in-command-prompt-windows-powershell-window */
 	const char* label = (argc == 1 ? "Hello, World!" : argv[1]);
 	const size_t label_code_point_len = strlen(label);
 	const int label_code_unit_len = utf8_strlen(label, label_code_point_len);
@@ -157,6 +166,7 @@ int main(int argc, char **argv) {
 	printf("\x1b[?1049l"); // Hides the alternate buffer
 	printf("\x1b[?25h"); // Shows the cursor
 #if _WIN32
+	SetConsoleOutputCP(original_output_cp);
 	// Just in case?
 	SetConsoleMode(h_out, original_out_mode);
 	SetConsoleMode(h_in, original_in_mode);
