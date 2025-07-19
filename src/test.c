@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
 	 * so parsing argument with characters outside the ASCII range will lead to some weird bugs.
 	 * Interesting stack overflow post on the subject :
 	 * https://stackoverflow.com/questions/57131654/using-utf-8-encoding-chcp-65001-in-command-prompt-windows-powershell-window */
-	const char* label = (argc == 1 ? "Hello, World!" : argv[1]);
+	const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
 	const size_t label_code_point_len = strlen(label);
 	const int label_code_unit_len = utf8_strlen(label, label_code_point_len);
 
