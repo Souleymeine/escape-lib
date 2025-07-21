@@ -23,8 +23,8 @@ endif
 DEBUG_OPTS   =
 RELEASE_OPTS =
 ifeq ($(cc_is_gcc_or_clang),true)
-	DEBUG_OPTS   = -I. -std=c2x -Wall -Wextra -DDEBUG -O0 -g3
-	RELEASE_OPTS = -I. -std=c2x -Wall -Wextra -Werror -O2
+	DEBUG_OPTS   = -I. -std=c23 -Wall -Wextra -DDEBUG -O0 -g3
+	RELEASE_OPTS = -I. -std=c23 -Wall -Wextra -Werror -O2
 else ifeq ($(cc_is_msvc),true)
 	DEBUG_OPTS   = -std:clatest -Wall -DDEBUG -Od -ZI
 	RELEASE_OPTS = -std:clatest -Wall -WX -O2
