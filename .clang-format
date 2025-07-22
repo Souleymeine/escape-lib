@@ -1,0 +1,85 @@
+Language: C
+BasedOnStyle: LLVM
+
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+
+AlignAfterOpenBracket: true
+
+AlignArrayOfStructures: Left
+
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+
+AlignEscapedNewlines: LeftWithLastLine
+
+AlignOperands: Align
+BreakBeforeBinaryOperators: true
+
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+
+AllowShortBlocksOnASingleLine: Empty
+
+AllowShortCaseLabelsOnASingleLine: true
+
+AllowShortEnumsOnASingleLine: true
+
+AllowShortFunctionsOnASingleLine: Empty
+
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+
+BinPackArguments: true
+
+BinPackParameters: OnePerLine
+
+BreakBeforeBraces: Linux
+
+SpaceBeforeParens: ControlStatements
+
+BreakBeforeTernaryOperators: true
+
+BreakStringLiterals: false
+
+ColumnLimit: 100
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^(<.*/.*)'
+    SortPriority:    0
+    Priority:        0
+  - Regex:           '<[[:alnum:].]+>'
+    SortPriority:    1
+    Priority:        0
+  - Regex:           '"[[:alnum:].]+"'
+    SortPriority:    2
+
+IndentCaseLabels: true
+
+InsertTrailingCommas: None
+
+# Hopefully C will support this when c23 will become the default (never)
+IntegerLiteralSeparator:
+  Binary: 8
+  Decimal: 3
+  Hex: -1
+
+KeepEmptyLines:
+  AtEndOfFile: true
+  AtStartOfBlock: false
+  AtStartOfFile: false
+
+InsertNewlineAtEOF: true
+
+MaxEmptyLinesToKeep: 2
+
+PPIndentWidth: 0
+
+PointerAlignment: Left
+
+SpaceInEmptyBlock: false
+
