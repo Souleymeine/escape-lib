@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 	// look for it and check if the HORIZ_MARGIN_OF_ERR_ALIGN property is opposite to the offset We
 	// can the apply a correction of + 1 or - 1 to match the desired off-centered alignment
 
-	const unsigned short left_gap_len        = (cols / 2) - (label_code_unit_len / 2);
+	unsigned short left_gap_len        = (cols / 2) - (label_code_unit_len / 2);
 	const unsigned short right_gap_len = cols - (left_gap_len + label_code_unit_len);
 
 	// -1 if left-centered, 1 if right-centered, 0 if perfectly centered
