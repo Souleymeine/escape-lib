@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: RafikFarhad/clang-format-github-action@v4
+      - uses: RafikFarhad/clang-format-github-action@v5
         with:
           sources: "src/**/*.h,src/**/*.c,test/**/*.c"
           style: file
