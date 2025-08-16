@@ -14,8 +14,8 @@ enum termflags : FLAG_T {
 	NO_ECHO     = 0x4,
 };
 
-/* Initialize some states variables and gathers information about the terminal the program is running in.
- * Required for escape sequences to work properly. */
+/* Initialize some states variables and gathers information about the terminal the program is
+ * running in. Required for escape sequences to work properly. */
 void init_term();
 
 /* Sets the given terminal flags via bitmask.

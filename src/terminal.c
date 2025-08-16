@@ -38,7 +38,7 @@ void init_term()
 	SetConsoleMode(h_stdout, og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
 	const DWORD new_in_mode = og_stdin_mode | ENABLE_VIRTUAL_TERMINAL_INPUT;
-	current_stdin_mode         = new_in_mode;
+	current_stdin_mode      = new_in_mode;
 	SetConsoleMode(h_stdin, new_in_mode);
 
 	og_output_cp = GetConsoleOutputCP();
@@ -65,8 +65,8 @@ int set_termflags(const FLAG_T flags)
 	 * TODO : some "side effects" are caused by the combination of those two flags, (presumably
 	 * something that has to do with line buffering) and should be studied with more care. */
 	SetConsoleMode(h_stdin, current_stdin_mode & (flags & NO_ECHO)
-	                         ? (~ENABLE_ECHO_INPUT)
-	                         : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
+	                            ? (~ENABLE_ECHO_INPUT)
+	                            : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
 
 	printf(CSI "?1049%c", flags & ALTBUF ? 'h' : 'l');
