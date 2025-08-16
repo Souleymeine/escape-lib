@@ -1,4 +1,3 @@
-Language: C
 BasedOnStyle: LLVM
 
 UseTab: ForIndentation
