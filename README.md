@@ -22,7 +22,8 @@ Such a test could be written in a `goal/style-handling` branch so that other bra
 
 The above example could then become :
 ```C
-void cool_test() {
+void cool_test()
+{
     altbuf_visbile(true);
     cursor_visible(false);
 
