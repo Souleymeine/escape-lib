@@ -2,7 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "terminal.h"
 #if _WIN32
+#include <conio.h>
 #include <windows.h>
 #elif __unix__
 #include <sys/ioctl.h>
@@ -14,7 +17,8 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define between(x, min, max) ((x) > (min) && (x) < (max))
+// https://stackoverflow.com/questions/8292852/the-best-way-to-define-a-between-macro-in-c
+#define between(x, x_min, x_max) ((x) > (x_min) && (x) < (x_max))
 
 
 #define LEFT  0
@@ -28,12 +32,12 @@ const bool VIRT_MARGIN_OF_ERR_ALIGN  = BOTTOM;
 
 
 typedef enum : char {
-	INVALID = -1,
 	CONTINUATION,
 	ASCII,
 	DOUBLE_BEGIN,
 	TRIPLE_BEGIN,
-	QUADRUPLE_BEGIN
+	QUADRUPLE_BEGIN,
+	INVALID = -1,
 } utf8_char_type;
 
 
@@ -53,7 +57,6 @@ size_t utf8_strlen(const char* str, const size_t str_len)
 
 	utf8_char_type uchar_i_type = INVALID;
 	size_t i                    = 0;
-
 	while (i < str_len) {
 		uchar_i_type = get_utf8_char_type(str[i]);
 		if (uchar_i_type == INVALID) {
@@ -67,50 +70,27 @@ size_t utf8_strlen(const char* str, const size_t str_len)
 	return len;
 }
 
-// utf8_char_type get_char_type
-
 int main(int argc, char** argv)
 {
+	init_term();
+	set_termflags(ALTBUF | HIDE_CURSOR | NO_ECHO);
+
 	unsigned short cols, rows;
-
 #if _WIN32
-
-	HANDLE h_in  = GetStdHandle(STD_INPUT_HANDLE);
-	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	DWORD original_in_mode;
-	DWORD original_out_mode;
-	GetConsoleMode(h_in, &original_in_mode);
-	GetConsoleMode(h_out, &original_out_mode);
-
-	SetConsoleMode(h_out, original_out_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-	SetConsoleMode(h_in, (original_in_mode | ENABLE_VIRTUAL_TERMINAL_INPUT) & (~ENABLE_ECHO_INPUT));
+	const HANDLE* h_out = get_g_stdout_hndl();
 
 	CONSOLE_SCREEN_BUFFER_INFO buf_info;
-	GetConsoleScreenBufferInfo(h_out, &buf_info);
+	GetConsoleScreenBufferInfo(*h_out, &buf_info);
 	cols = buf_info.dwMaximumWindowSize.X;
 	rows = buf_info.dwMaximumWindowSize.Y;
 
-	UINT original_output_cp = GetConsoleOutputCP();
 	SetConsoleOutputCP(CP_UTF8);
-
 #else
-
-	struct termios term_attr;
-	tcgetattr(STDIN_FILENO, &term_attr);
-	term_attr.c_lflag &= ~ECHO;
-	tcsetattr(STDIN_FILENO, 0, &term_attr);
-
 	struct winsize window;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ,
-	      &window); // Get the window width and height in cells (columns, lines) and in pixels
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &window);
 	cols = window.ws_col;
 	rows = window.ws_row;
-
 #endif
-
-	printf("\x1b[?1049h"); // Shows alternate buffer
-	printf("\x1b[?25l");   // Hides the cursor
 
 	// Paint half the cells (for visualization purposes)
 	for (int i = 0; i < rows * cols; ++i) {
@@ -168,32 +148,21 @@ int main(int argc, char** argv)
 			if (code_point_i > 0) {
 				printf("\x1b[m"); // End the sequence
 			}
-			printf("\x1b[38;5;%hhu;1;3m%c", val,
-			       uchar_i); // Begins the sequence : Bold, italic and grayscaled gradient colored
-			printf("%.*s", uchar_i_type - 1,
-			       label + code_point_i + 1); // prints the next continuation chars (if any)
-
+			printf("\x1b[38;5;%hhu;1;3m%c", val, uchar_i);
+			printf("%.*s", uchar_i_type - 1, label + code_point_i + 1);
 			++code_unit_i;
 			code_point_i += uchar_i_type;
 		}
 	}
 
+#if __unix__
 	getchar();
-	printf("\x1b[?1049l"); // Hides the alternate buffer
-	printf("\x1b[?25h");   // Shows the cursor
-
-#if _WIN32
-
-	SetConsoleOutputCP(original_output_cp);
-	// Just in case?
-	SetConsoleMode(h_out, original_out_mode);
-	SetConsoleMode(h_in, original_in_mode);
-
-#elif __unix__
-
-	term_attr.c_lflag |= ECHO;
-	tcsetattr(STDIN_FILENO, 0, &term_attr);
-
+#elif _WIN32
+	while (getch() != '\r') {
+		continue;
+	}
 #endif
+
+	cleanup_term();
 }
 
