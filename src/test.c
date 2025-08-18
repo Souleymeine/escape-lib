@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "terminal.h"
+#include "termsize.h"
 #if _WIN32
 #include <conio.h>
 #include <windows.h>
@@ -75,30 +76,19 @@ int main(int argc, char** argv)
 	init_term();
 	set_termflags(ALTBUF | HIDE_CURSOR | NO_ECHO);
 
-	unsigned short cols, rows;
+	const struct ro_termsize size = get_termsize();
+
 #if _WIN32
-	const HANDLE* h_out = get_g_stdout_hndl();
-
-	CONSOLE_SCREEN_BUFFER_INFO buf_info;
-	GetConsoleScreenBufferInfo(*h_out, &buf_info);
-	cols = buf_info.dwMaximumWindowSize.X;
-	rows = buf_info.dwMaximumWindowSize.Y;
-
 	SetConsoleOutputCP(CP_UTF8);
-#else
-	struct winsize window;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &window);
-	cols = window.ws_col;
-	rows = window.ws_row;
 #endif
 
 	// Paint half the cells (for visualization purposes)
-	for (int i = 0; i < rows * cols; ++i) {
+	for (unsigned int i = 0; i < size.rows * size.cols; ++i) {
 		printf(i % 2 == 0 ? "\x1b[48;5;232m \x1b[m" : " ");
 	}
 	printf("\x1b[H"); // move cursor to home position
 
-	printf("cols : %hu, rows: %hu\n", cols, rows);
+	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
 
 	/* NOTE : utf8 commandline argument on Windows requires powershell/cmd.exe to use the 65001 code
 	 * page, which needs to be set before the program is executed, obviously, but it is not the
@@ -115,8 +105,8 @@ int main(int argc, char** argv)
 	// look for it and check if the HORIZ_MARGIN_OF_ERR_ALIGN property is opposite to the offset We
 	// can the apply a correction of + 1 or - 1 to match the desired off-centered alignment
 
-	unsigned short left_gap_len        = (cols / 2) - (label_code_unit_len / 2);
-	const unsigned short right_gap_len = cols - (left_gap_len + label_code_unit_len);
+	unsigned short left_gap_len        = (size.cols / 2) - (label_code_unit_len / 2);
+	const unsigned short right_gap_len = size.cols - (left_gap_len + label_code_unit_len);
 
 	// -1 if left-centered, 1 if right-centered, 0 if perfectly centered
 	const char align_error = left_gap_len - right_gap_len;
@@ -127,8 +117,9 @@ int main(int argc, char** argv)
 		left_gap_len -= 1;
 	}
 
-	const unsigned short virt_margin_of_error = ((rows % 2) != 0 ? 1 : VIRT_MARGIN_OF_ERR_ALIGN);
-	const unsigned short middle_line          = rows / 2 + virt_margin_of_error;
+	const unsigned short virt_margin_of_error
+	    = ((size.rows % 2) != 0 ? 1 : VIRT_MARGIN_OF_ERR_ALIGN);
+	const unsigned short middle_line = size.rows / 2 + virt_margin_of_error;
 
 	printf("\x1b[%hu;%huH", middle_line, left_gap_len + 1); // We go to y, x (line, column)
 
