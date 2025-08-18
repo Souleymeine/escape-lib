@@ -3,3 +3,5 @@
 ---
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics
+- [ ] Account for other terminal emulators on Windows other than *conhost* and *Terminal*
+
