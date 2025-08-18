@@ -83,9 +83,9 @@ int main(int argc, char** argv)
 #endif
 
 	// Paint half the cells (for visualization purposes)
-	// for (unsigned int i = 0; i < size.rows * size.cols; ++i) {
-	// 	printf(i % 2 == 0 ? "\x1b[48;5;232m \x1b[m" : " ");
-	// }
+	for (unsigned int i = 0; i < size.rows * size.cols; ++i) {
+		printf(i % 2 == 0 ? "\x1b[48;5;232m \x1b[m" : " ");
+	}
 	printf("\x1b[H"); // move cursor to home position
 
 	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
