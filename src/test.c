@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	 */
 	const char* label              = (argc == 1 ? "Всем привет !" : argv[1]);
 	const size_t label_cpt_count   = strlen(label);
-	const int label_grapheme_count = count_graphemes(label, label_cpt_count);
+	const int label_grapheme_count = count_utf8_graphemes(label, label_cpt_count);
 	if (label_grapheme_count == -1) {
 		return -1;
 	}
@@ -87,12 +87,12 @@ int main(int argc, char** argv)
 	printf("\x1b[%hu;%huH", middle_line, left_gap_len + 1); // We go to y, x (line, column)
 
 
-	enum cpt_type cpt_i_type = INVALID;
+	enum utf8cpt_type cpt_i_type = INVALID;
 	uint8_t val              = 0;
 	size_t cpt_i = 0, grapheme_i = 0;
 	while (cpt_i < label_cpt_count) {
 		val = min(232 + ((float)grapheme_i / label_grapheme_count) * 24, 255); // 8 bit color ID
-		cpt_i_type = get_cpt_type(label[cpt_i]);
+		cpt_i_type = get_utf8cpt_type(label[cpt_i]);
 		if (cpt_i_type == INVALID) {
 			return -1;
 		} else {
