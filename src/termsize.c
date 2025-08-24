@@ -1,8 +1,8 @@
 #if _WIN32
 #include <windows.h>
-#include "terminal.h"
 
 #elif __unix__
+#include "terminal.h"
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
