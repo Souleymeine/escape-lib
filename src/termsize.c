@@ -1,7 +1,7 @@
 #if _WIN32
 #include <windows.h>
-
 #include "terminal.h"
+
 #elif __unix__
 #include <sys/ioctl.h>
 #include <termios.h>
