@@ -4,6 +4,8 @@ build/
 compile_commands.json
 .cache/
 
+test-*
+
 ## From Github template : https://github.com/github/gitignore/blob/main/C.gitignore
 # Prerequisites
 *.d
