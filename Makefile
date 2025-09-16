@@ -71,11 +71,14 @@ libescape-debug.so: $(DYNAMIC_DEBUG_OBJECTS)
 libescape-release.so: $(DYNAMIC_RELEASE_OBJECTS)
 	$(CC) -shared $^ -o $@
 
-libescape-debug.a: $(STATIC_DEBUG_OBJECTS)
-	$(AR) rcs $@ $^
+# Only updates outdated/missing objects instead of creating a new archive each time
+libescape-debug.a: libescape-debug.a($(STATIC_DEBUG_OBJECTS))
+libescape-debug.a($(BUILDDIR)/static/debug/%.o): $(STATIC_DEBUG_OBJECTS)
+	$(AR) -cr $@ $?
 
-libescape-release.a: $(STATIC_RELEASE_OBJECTS)
-	$(AR) rcs $@ $^
+libescape-release.a: libescape-release.a($(STATIC_RELEASE_OBJECTS))
+libescape-release.a($(BUILDDIR)/static/release/%.o): $(STATIC_RELEASE_OBJECTS)
+	$(AR) -cr $@ $?
 
 # Pattern rules for each test build type
 # The first letter s stands for static, d for dynamic.
@@ -120,3 +123,8 @@ $(BUILDDIR)/static/release/%.o: $(SRCDIR)/%.c
 	$(file > $(STATIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -c $< -o $@
 
+libescape-debug.a($(BUILDDIR)/static/debug/%.o): $(BUILDDIR)/static/debug/%.o
+	$(AR) cr libescape-debug.a $@
+
+libescape-release.a($(BUILDDIR)/static/debug/%.o): $(BUILDDIR)/static/release/%.o
+	$(AR) cr libescape-release.a $@
