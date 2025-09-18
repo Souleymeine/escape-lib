@@ -67,18 +67,22 @@ cleantest:
 
 # Library targets (having the corresponding object files as prequisites)
 libescape-debug.so: $(DYNAMIC_DEBUG_OBJECTS)
+	$(file > $(DYNAMIC_DEBUG_BUILDINFO_FILE),$(CC))
 	$(CC) -shared $^ -o $@
 
 libescape-release.so: $(DYNAMIC_RELEASE_OBJECTS)
+	$(file > $(DYNAMIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(CC) -shared $^ -o $@
 
 # Seems like we're not involved in this, but if one day something breaks because of those rules with parallel builds,
 # take a look at this : https://www.gnu.org/software/make/manual/html_node/Archive-Pitfalls.html
 
 libescape-debug.a: $(STATIC_DEBUG_OBJECTS)
+	$(file > $(STATIC_DEBUG_BUILDINFO_FILE),$(CC))
 	$(AR) -cr $@ $?
 
 libescape-release.a: $(STATIC_RELEASE_OBJECTS)
+	$(file > $(STATIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(AR) -cr $@ $?
 
 # Pattern rules for each test build type
@@ -106,21 +110,17 @@ test-%-dd: $(TESTDIR)/%.c libescape-debug.so
 # Pattern rules for each lib build type (object files)
 $(BUILDDIR)/dynamic/debug/%.o: $(SRCDIR)/%.c
 	$(shell mkdir -p $(BUILDDIR)/dynamic/debug)
-	$(file > $(DYNAMIC_DEBUG_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) -fPIC -c $< -o $@
 
 $(BUILDDIR)/dynamic/release/%.o: $(SRCDIR)/%.c
 	$(shell mkdir -p $(BUILDDIR)/dynamic/release)
-	$(file > $(DYNAMIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -fPIC -c $< -o $@
 
 $(BUILDDIR)/static/debug/%.o: $(SRCDIR)/%.c
 	$(shell mkdir -p $(BUILDDIR)/static/debug)
-	$(file > $(STATIC_DEBUG_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) -c $< -o $@
 
 $(BUILDDIR)/static/release/%.o: $(SRCDIR)/%.c
 	$(shell mkdir -p $(BUILDDIR)/static/release)
-	$(file > $(STATIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -c $< -o $@
 
