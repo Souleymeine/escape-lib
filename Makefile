@@ -49,9 +49,10 @@ $(eval $(call check-cc-change,libescape-debug.a,$(STATIC_DEBUG_BUILDINFO),$(BUIL
 $(eval $(call check-cc-change,libescape-release.a,$(STATIC_RELEASE_BUILDINFO),$(BUILDDIR)/static/release))
 
 
+.DEFAULT_GOAL := libescape-release.so
+
 .PHONY: all clean cleanall cleanlib cleanobj cleantest default
 
-default: libescape-release.so
 all: libescape-debug.so libescape-release.so libescape-release.a libescape-debug.a
 
 clean: cleanall
@@ -71,13 +72,13 @@ libescape-debug.so: $(DYNAMIC_DEBUG_OBJECTS)
 libescape-release.so: $(DYNAMIC_RELEASE_OBJECTS)
 	$(CC) -shared $^ -o $@
 
-# Only updates outdated/missing objects instead of creating a new archive each time
-libescape-debug.a: libescape-debug.a($(STATIC_DEBUG_OBJECTS))
-libescape-debug.a($(BUILDDIR)/static/debug/%.o): $(STATIC_DEBUG_OBJECTS)
+# Seems like we're not involved in this, but if one day something breaks because of those rules with parallel builds,
+# take a look at this : https://www.gnu.org/software/make/manual/html_node/Archive-Pitfalls.html
+
+libescape-debug.a: $(STATIC_DEBUG_OBJECTS)
 	$(AR) -cr $@ $?
 
-libescape-release.a: libescape-release.a($(STATIC_RELEASE_OBJECTS))
-libescape-release.a($(BUILDDIR)/static/release/%.o): $(STATIC_RELEASE_OBJECTS)
+libescape-release.a: $(STATIC_RELEASE_OBJECTS)
 	$(AR) -cr $@ $?
 
 # Pattern rules for each test build type
@@ -123,8 +124,3 @@ $(BUILDDIR)/static/release/%.o: $(SRCDIR)/%.c
 	$(file > $(STATIC_RELEASE_BUILDINFO_FILE),$(CC))
 	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -c $< -o $@
 
-libescape-debug.a($(BUILDDIR)/static/debug/%.o): $(BUILDDIR)/static/debug/%.o
-	$(AR) cr libescape-debug.a $@
-
-libescape-release.a($(BUILDDIR)/static/debug/%.o): $(BUILDDIR)/static/release/%.o
-	$(AR) cr libescape-release.a $@
