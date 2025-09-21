@@ -42,7 +42,6 @@ ifeq ($(MAKECMDGOALS),$(1))
 endif
 endef
 
-# Eval's seem to be crucial here, don't mess up with it.
 $(eval $(call check-cc-change,libescape-debug.so,$(DYNAMIC_DEBUG_BUILDINFO),$(BUILDDIR)/dynamic/debug))
 $(eval $(call check-cc-change,libescape-release.so,$(DYNAMIC_RELEASE_BUILDINFO),$(BUILDDIR)/dynamic/release))
 $(eval $(call check-cc-change,libescape-debug.a,$(STATIC_DEBUG_BUILDINFO),$(BUILDDIR)/static/debug))
