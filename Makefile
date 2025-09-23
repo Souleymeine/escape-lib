@@ -1,127 +1,137 @@
-MAKEFLAGS += --no-builtin-rules --no-builtin-variables
+# ~~~ Configurable options (here are the default, overrideable from cmdline) ~~~
 
 CC = gcc
 AR = ar
 
-INCLUDEDIR = ./include
-BUILDDIR   = ./build
-SRCDIR     = ./src
-TESTDIR    = ./test
+STRIP = no
 
-SOURCES = $(wildcard $(SRCDIR)/*.c)
+OPTIM_LVL      = 2
+DEBUG_VERB_LVL = 3
 
-OBJ_FLAGS      = -MMD -MP -c
-BASE_CFLAGS    = -std=c23 -Wall -Wextra -I$(INCLUDEDIR)
-DEBUG_CFLAGS   = -g3 -O0 -DDEBUG -fsanitize=address,leak,undefined
-RELEASE_CFLAGS = -O2 -Werror
+# ~~~ Make options ~~~
+SHELL = /bin/sh
+override MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 
-DYNAMIC_DEBUG_OBJECTS   = $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/dynamic/debug/%.o)
-DYNAMIC_RELEASE_OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/dynamic/release/%.o)
-STATIC_DEBUG_OBJECTS    = $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/static/debug/%.o)
-STATIC_RELEASE_OBJECTS  = $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/static/release/%.o)
+# ~~~ Directories ~~~
+include_dir := ./include
+build_dir   := ./build
+src_dir     := ./src
+test_dir    := ./test
 
-
-# Check if CC changed since last build for the current target
-# Clean the right folder if it's the case
-
-DYNAMIC_DEBUG_BUILDINFO_FILE   = $(BUILDDIR)/dynamic/debug/.buildinfo
-DYNAMIC_RELEASE_BUILDINFO_FILE = $(BUILDDIR)/dynamic/release/.buildinfo
-STATIC_DEBUG_BUILDINFO_FILE    = $(BUILDDIR)/static/debug/.buildinfo
-STATIC_RELEASE_BUILDINFO_FILE  = $(BUILDDIR)/static/release/.buildinfo
-
-DYNAMIC_DEBUG_BUILDINFO   = $(file < $(DYNAMIC_DEBUG_BUILDINFO_FILE))
-DYNAMIC_RELEASE_BUILDINFO = $(file < $(DYNAMIC_RELEASE_BUILDINFO_FILE))
-STATIC_DEBUG_BUILDINFO    = $(file < $(STATIC_DEBUG_BUILDINFO_FILE))
-STATIC_RELEASE_BUILDINFO  = $(file < $(STATIC_RELEASE_BUILDINFO_FILE))
-
-# Do not simplify the ifeq statement in this variable with an $(if ...) function
-# or it may break when using rules like 'all' or 'default'. Still not so sure why.
-define check-cc-change =
-ifeq ($(MAKECMDGOALS),$(1))
-  $(if $(and $(2),$(filter-out $(2),$(CC))),$(shell rm -rf $(3)/* $(1)))
+# ~~~ Flags ~~~
+OBJ_CFLAGS     := -MMD -MP -c
+BASE_CFLAGS    := -std=c23 -Wall -Wextra -I$(include_dir) $(CFLAGS)
+DEBUG_CFLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG -fsanitize=address,leak,undefined
+RELEASE_CFLAGS := -O$(OPTIM_LVL) -Werror
+ifeq ($(STRIP),yes)
+  STRIP_CFLAG   = -s
 endif
+
+# ~~~ Files (sources, objects) ~~~
+sources                 := $(wildcard $(src_dir)/*.c)
+test_sources            := $(wildcard $(test_dir)/*.c)
+dynamic_debug_objects   := $(sources:$(src_dir)/%.c=$(build_dir)/dynamic/debug/%.o)
+dynamic_release_objects := $(sources:$(src_dir)/%.c=$(build_dir)/dynamic/release/%.o)
+static_debug_objects    := $(sources:$(src_dir)/%.c=$(build_dir)/static/debug/%.o)
+static_release_objects  := $(sources:$(src_dir)/%.c=$(build_dir)/static/release/%.o)
+
+# ~~~ Additional build info ~~~
+cc_build_filename := cc
+
+# Check if CC changed since last build and wipe out old objects / create directories for current target
+# This is not possible using only prerequisites in GNU make (I guess)
+# TODO : generalize for other options, without relying on other porgrams
+define check-cc-change =
+  ifeq ($(MAKECMDGOALS),$(1))
+    $(shell mkdir -p $(2))
+    $(if $(and $(file < $(2)/.$(cc_build_filename)),$(filter-out $(file < $(2)/.$(cc_build_filename)),$(CC))),\
+      $(shell rm -r $(2)/*.o))
+    $(file > $(2)/.$(cc_build_filename),$(CC))
+  endif
 endef
 
-$(eval $(call check-cc-change,libescape-debug.so,$(DYNAMIC_DEBUG_BUILDINFO),$(BUILDDIR)/dynamic/debug))
-$(eval $(call check-cc-change,libescape-release.so,$(DYNAMIC_RELEASE_BUILDINFO),$(BUILDDIR)/dynamic/release))
-$(eval $(call check-cc-change,libescape-debug.a,$(STATIC_DEBUG_BUILDINFO),$(BUILDDIR)/static/debug))
-$(eval $(call check-cc-change,libescape-release.a,$(STATIC_RELEASE_BUILDINFO),$(BUILDDIR)/static/release))
+$(eval $(call check-cc-change,libescape_g.so,$(build_dir)/dynamic/debug))
+$(eval $(call check-cc-change,libescape.so,$(build_dir)/dynamic/release))
+$(eval $(call check-cc-change,libescape_g.a,$(build_dir)/static/debug))
+$(eval $(call check-cc-change,libescape.a,$(build_dir)/static/release))
 
 
-.DEFAULT_GOAL := libescape-release.so
+all: libescape.a
 
-.PHONY: all clean cleanall cleanlib cleanobj cleantest default
-
-all: libescape-debug.so libescape-release.so libescape-release.a libescape-debug.a
-
-clean: cleanall
-cleanall:
-	-rm -rf $(BUILDDIR) libescape* test-*
+# ~~~ Cleaning rules ~~~
+# See https://www.gnu.org/software/make/manual/html_node/Standard-Targets.html
+clean:
+	-rm -r $(build_dir) libescape*{.a,.so} *-{sr,sd,dr,dd}
+mostlyclean:
+	-rm -r $(build_dir)
 cleanlib:
-	-rm libescape-*
-cleanobj:
-	-rm -rf $(BUILDDIR)
+	-rm libescape*{.a,.so}
 cleantest:
-	-rm test-*
+	-rm test-*-{sr,sd,dr,dd}
+distclean:
+	-rm escape*.tar.*
 
-# Library targets (having the corresponding object files as prequisites)
-libescape-debug.so: $(DYNAMIC_DEBUG_OBJECTS)
-	$(file > $(DYNAMIC_DEBUG_BUILDINFO_FILE),$(CC))
+.PHONY: clean mostlyclean cleanlib cleantest distclean
+
+# TODO targets to add : dist
+
+# ~~~ Library targets ~~~
+libescape_g.so: $(dynamic_debug_objects)
 	$(CC) -shared $^ -o $@
 
-libescape-release.so: $(DYNAMIC_RELEASE_OBJECTS)
-	$(file > $(DYNAMIC_RELEASE_BUILDINFO_FILE),$(CC))
-	$(CC) -s -shared $^ -o $@
+libescape.so: $(dynamic_release_objects)
+	$(CC) $(STRIP_CFLAG) -shared $^ -o $@
 
-# Seems like we're not involved in this, but if one day something breaks because of those rules with parallel builds,
-# take a look at this : https://www.gnu.org/software/make/manual/html_node/Archive-Pitfalls.html
-
-libescape-debug.a: $(STATIC_DEBUG_OBJECTS)
-	$(file > $(STATIC_DEBUG_BUILDINFO_FILE),$(CC))
+# If one day something breaks with these two targets when using parallel builds (-j), see :
+# https://www.gnu.org/software/make/manual/html_node/Archive-Pitfalls.html
+libescape_g.a: $(static_debug_objects)
 	$(AR) -cr $@ $?
 
-libescape-release.a: $(STATIC_RELEASE_OBJECTS)
-	$(file > $(STATIC_RELEASE_BUILDINFO_FILE),$(CC))
+libescape.a: $(static_release_objects)
 	$(AR) -cr $@ $?
 
-# Pattern rules for each test build type
-# The first letter s stands for static, d for dynamic.
-# The second letter d stands for debug, r for release
-test-%-sr: $(TESTDIR)/%.c libescape-release.a
-	$(CC) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -s $< -o $@ $(lastword $^)
+# ~~~ Pattern rules for tests of all build types ~~~
+# 1st prefix letter - [s]tatic | [d]ynamic
+# 2nd prefix letter - [d]ebug  | [r]elease
+test-%-sr: $(test_dir)/%.c libescape.a
+	$(CC) $(BASE_CFLAGS) $(RELEASE_CFLAGS) $(STRIP_CFLAG) $< -o $@ $(lastword $^)
 
-test-%-sd: $(TESTDIR)/%.c libescape-debug.a
+test-%-sd: $(test_dir)/%.c libescape_g.a
 	$(CC) $(BASE_CFLAGS) $(DEBUG_CFLAGS) $< -o $@ $(lastword $^)
 
-test-%-dr: $(TESTDIR)/%.c libescape-release.so
-	$(CC) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -s -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
+test-%-dr: $(test_dir)/%.c libescape.so
+	$(CC) $(BASE_CFLAGS) $(RELEASE_CFLAGS) $(STRIP_CFLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
-test-%-dd: $(TESTDIR)/%.c libescape-debug.so
+test-%-dd: $(test_dir)/%.c libescape_g.so
 	$(CC) $(BASE_CFLAGS) $(DEBUG_CFLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
+# ~~~ "every" rules to test all that can be built
+everylibs: libescape_g.so libescape.so libescape_g.a libescape.a
+# Pattern rules won't allow you to generalize this :
+# https://www.gnu.org/software/make/manual/html_node/Match_002dAnything-Rules.html
+every-sr-tests: $(addsuffix -sr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-sd-tests: $(addsuffix -sd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-dr-tests: $(addsuffix -dr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-dd-tests: $(addsuffix -dd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+# For both fun and CI/CD (should not pass if any build went wrong during compilation)
+everything: everylibs every-sr-tests every-sd-tests every-dr-tests every-dd-tests
 
-$(BUILDDIR)/dynamic/debug: ; mkdir -p $@
-$(BUILDDIR)/dynamic/release:; mkdir -p $@
-$(BUILDDIR)/static/debug:; mkdir -p $@
-$(BUILDDIR)/static/release:; mkdir -p $@
+# ~~~ Pattern rules for objects of all build types ~~~
+$(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c
+	$(CC) $(OBJ_CFLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) -fPIC $< -o $@
 
-# Pattern rules for each lib build type (object files)
-$(BUILDDIR)/dynamic/debug/%.o: $(SRCDIR)/%.c | $(BUILDDIR)/dynamic/debug
-	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) -fPIC $< -o $@
+$(build_dir)/dynamic/release/%.o: $(src_dir)/%.c
+	$(CC) $(OBJ_CFLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -fPIC $< -o $@
 
-$(BUILDDIR)/dynamic/release/%.o: $(SRCDIR)/%.c | $(BUILDDIR)/dynamic/release
-	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) -fPIC $< -o $@
+$(build_dir)/static/debug/%.o: $(src_dir)/%.c
+	$(CC) $(OBJ_CFLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) $< -o $@
 
-$(BUILDDIR)/static/debug/%.o: $(SRCDIR)/%.c | $(BUILDDIR)/static/debug
-	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(DEBUG_CFLAGS) $< -o $@
+$(build_dir)/static/release/%.o: $(src_dir)/%.c
+	$(CC) $(OBJ_CFLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) $< -o $@
 
-$(BUILDDIR)/static/release/%.o: $(SRCDIR)/%.c | $(BUILDDIR)/static/release
-	$(CC) $(OBJ_FLAGS) $(BASE_CFLAGS) $(RELEASE_CFLAGS) $< -o $@
-
-# Include dependency files generated by gcc (see BASE_CFLAGS)
-# They are file specific targets with the right prequisites based on actual #include directives
--include $(DYNAMIC_DEBUG_OBJECTS:.o=.d)
--include $(DYNAMIC_RELEASE_OBJECTS:.o=.d)
--include $(STATIC_DEBUG_OBJECTS:.o=.d)
--include $(STATIC_RELEASE_OBJECTS:.o=.d)
+# ~~~ Specific object targets based inlcude directives (generated by $(CC) where the objects live) ~~~
+-include $(dynamic_debug_objects:.o=.d)
+-include $(dynamic_release_objects:.o=.d)
+-include $(static_debug_objects:.o=.d)
+-include $(static_release_objects:.o=.d)
 
