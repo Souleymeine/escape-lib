@@ -20,9 +20,20 @@ src_dir     := ./src
 test_dir    := ./test
 
 # ~~~ Flags ~~~
+# On Windows with mingw, gcc doesn't support any form of sanitization
+# while clang (distributed with mingw or not) supports address sanitization and UB detection
+ifeq ($(OS),Windows_NT)
+ifeq ($(CC),clang)
+fsan := -fsanitize=address,undefined
+endif
+else
+# On GNU/linux everything is fine of course
+fsan := -fsanitize=address,leak,undefined
+endif
+
 OBJ_FLAGS     := -MMD -MP -c
 BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir) $(CFLAGS)
-DEBUG_FLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG -fsanitize=address,leak,undefined
+DEBUG_FLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG $(fsan)
 RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror
 STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
 LTO_FLAG      := $(if $(filter true yes 1,$(LTO)),-flto)
@@ -107,8 +118,8 @@ everything: every-sr-tests every-sd-tests every-dr-tests every-dd-tests
 
 
 # ~~~ Required directories ~~~
-%/release:; mkdir -p $@
-%/debug:;   mkdir -p $@
+%/release:; mkdir -p "$@"
+%/debug:;   mkdir -p "$@"
 
 # ~~~ Pattern rules for objects of all build types ~~~
 $(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/debug
