@@ -12,7 +12,15 @@ jobs:
           sources: "src/*.h,include/*.c,test/*.c"
           style: file
 
-      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+      - run: |
+          sudo apt update
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          sudo apt update
+          sudo apt install -y gcc-15
+
+      - run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
 
       - run: make everything -j
 
