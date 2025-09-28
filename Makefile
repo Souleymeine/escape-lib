@@ -108,11 +108,11 @@ test-%-dd: $(test_dir)/%.c libescape_g.so
 # ~~~ "every" rules to test all that can be built
 # Pattern rules won't allow you to generalize this :
 # https://www.gnu.org/software/make/manual/html_node/Match_002dAnything-Rules.html
-every-sr-tests: $(addsuffix -sr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-sd-tests: $(addsuffix -sd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-dr-tests: $(addsuffix -dr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-dd-tests: $(addsuffix -dd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-everylibs: libescape_g.so libescape.so libescape_g.a libescape.a
+every-sr-test: $(addsuffix -sr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-sd-test: $(addsuffix -sd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-dr-test: $(addsuffix -dr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+every-dd-test: $(addsuffix -dd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
 everything: every-sr-tests every-sd-tests every-dr-tests every-dd-tests
 
