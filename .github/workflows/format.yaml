@@ -17,5 +17,5 @@ jobs:
           packages: clang
           version: 1.0
 
-      - run: make everything CC=clang -j
+      - run: make everything CC=clang -j$(nproc)
 
