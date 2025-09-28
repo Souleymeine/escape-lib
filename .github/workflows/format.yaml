@@ -1,8 +1,6 @@
 name: Build Tests and Clang Format Checker
 run-name: Checking format and testing builds based on changes pushed by ${{ github.actor }}.
-on:
-  push:
-    branches : [main]
+on: [push]
 jobs:
   format-checking-make-all-targets:
     runs-on: ubuntu-latest
