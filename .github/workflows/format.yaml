@@ -3,7 +3,7 @@ run-name: Checking format and testing builds based on changes pushed by ${{ gith
 on: [push]
 jobs:
   format-checking-make-all-targets:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -12,9 +12,11 @@ jobs:
           sources: "src/*.h,include/*.c,test/*.c"
           style: file
 
+      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gcc
+          packages: gcc-15
           version: 1.0
 
       - run: make everything -j
