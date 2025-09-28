@@ -12,7 +12,10 @@ jobs:
           sources: "src/*.h,include/*.c,test/*.c"
           style: file
 
-      - run: sudo apt install -y clang
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: clang
+          version: 1.0
 
       - run: make everything CC=clang -j
 
