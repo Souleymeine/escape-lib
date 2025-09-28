@@ -1,6 +1,6 @@
 # ~~~ Configurable options (here are the default, overrideable from cmdline) ~~~
 
-CC = gcc
+CC = gcc-15
 AR = ar
 
 OPTIM_LVL      = 2
