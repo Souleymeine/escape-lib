@@ -1,4 +1,5 @@
 #include <stdbit.h>
+#include <uchar.h>
 
 #include "grapheme.h"
 

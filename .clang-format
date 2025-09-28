@@ -1,6 +1,6 @@
 BasedOnStyle: LLVM
 
-UseTab: ForIndentation
+UseTab: AlignWithSpaces
 IndentWidth: 4
 TabWidth: 4
 
@@ -44,7 +44,7 @@ BreakBeforeTernaryOperators: true
 
 BreakStringLiterals: false
 
-ColumnLimit: 100
+ColumnLimit: 130
 
 IncludeBlocks: Regroup
 IncludeCategories:
