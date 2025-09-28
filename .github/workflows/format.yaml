@@ -3,7 +3,7 @@ run-name: Checking format and testing builds based on changes pushed by ${{ gith
 on: [push]
 jobs:
   format-checking-make-all-targets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
       - uses: RafikFarhad/clang-format-github-action@v5
