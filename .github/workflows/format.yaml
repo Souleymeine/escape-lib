@@ -6,9 +6,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
+
       - uses: RafikFarhad/clang-format-github-action@v5
         with:
-          sources: "src/*.h,src/*.c,test/*.c"
+          sources: "src/*.h,include/*.c,test/*.c"
           style: file
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gcc-15
+          version: 1.0
+
       - run: make everything -j
 
