@@ -7,10 +7,14 @@ jobs:
   format-checking-make-all-targets:
     runs-on: ubuntu-latest
     steps:
+      - name: source code format checking based on .clang-format and makes all target
+
       - uses: actions/checkout@latest
+
       - uses: RafikFarhad/clang-format-github-action@latest
         with:
           sources: "src/*.h,src/*.c,test/*.c"
           style: file
+
       - run: make everything -j
 
