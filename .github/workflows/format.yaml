@@ -1,5 +1,5 @@
 name: Build Tests and Clang Format Checker
-run-name: Checking format and testing builds based on changes pushed by ${{ github.actor }}.
+run-name: Checking format and testing builds based on changes pushed by ${{ github.actor }}
 on: [push]
 jobs:
   format-checking-make-all-targets:
@@ -9,7 +9,7 @@ jobs:
 
       - uses: RafikFarhad/clang-format-github-action@v5
         with:
-          sources: "src/*.h,include/*.c,test/*.c"
+          sources: "src/*.c,include/*.h,test/*.c"
           style: file
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
