@@ -114,7 +114,7 @@ every-dr-test: $(addsuffix -dr,$(addprefix test-,$(basename $(notdir $(test_sour
 every-dd-test: $(addsuffix -dd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
 everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
-everything: every-sr-tests every-sd-tests every-dr-tests every-dd-tests
+everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
 
 # ~~~ Required directories ~~~
