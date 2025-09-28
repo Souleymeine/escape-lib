@@ -5,12 +5,10 @@ jobs:
   format-checking-make-all-targets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@latest
-
-      - uses: RafikFarhad/clang-format-github-action@latest
+      - uses: actions/checkout@v5
+      - uses: RafikFarhad/clang-format-github-action@v5
         with:
           sources: "src/*.h,src/*.c,test/*.c"
           style: file
-
       - run: make everything -j
 
