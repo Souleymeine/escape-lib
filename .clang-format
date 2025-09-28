@@ -34,8 +34,6 @@ AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 
 BinPackArguments: true
 
-BinPackParameters: OnePerLine
-
 BreakBeforeBraces: Linux
 
 SpaceBeforeParens: ControlStatements
