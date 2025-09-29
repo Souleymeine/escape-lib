@@ -133,6 +133,7 @@ run-%-dd: test-%-dd
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
 everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
+.NOTINTERMEDIATE:
 everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
 
