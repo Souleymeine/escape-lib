@@ -1,5 +1,3 @@
-# Escape Lib
-
 **NOTE : This project is nothing more than a draft for now.**
 
 ## Developpement scheme
