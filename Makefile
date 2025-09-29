@@ -1,17 +1,26 @@
-# ~~~ Configurable options (here are the default, overrideable from cmdline) ~~~
+# ~~~ Configurable options (overrideable from cmdline) ~~~
+CONFIG = build.cfg
+include ${CONFIG}
 
-CC = gcc
-AR = ar
+override missing-opt-err = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)
 
-OPTIM_LVL      = 2
-DEBUG_VERB_LVL = 3
-
-STRIP = no
-LTO   = yes
+# Checking for missing options
+ifndef OPTIM_LVL
+$(call missing-opt-err,OPTIM_LVL)
+endif
+ifndef DEBUG_VERB_LVL
+$(call missing-opt-err,DEBUG_VERB_LVL)
+endif
+ifndef STRIP
+$(call missing-opt-err,STRIP)
+endif
+ifndef LTO
+$(call missing-opt-err,LTO)
+endif
 
 # ~~~ Make options ~~~
 SHELL = /bin/sh
-override MAKEFLAGS += --no-builtin-rules --no-builtin-variables
+override MAKEFLAGS += --no-builtin-rules
 
 # ~~~ Directories ~~~
 include_dir := ./include
@@ -46,7 +55,7 @@ dyn_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/dynamic/release/%.o)
 stc_debug_objs   := $(sources:$(src_dir)/%.c=$(build_dir)/static/debug/%.o)
 stc_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/static/release/%.o)
 
-
+# Default target (declared as the first rule in the Makefile)
 all: libescape.a
 
 # ~~~ Cleaning rules ~~~
@@ -81,16 +90,16 @@ distclean:
 
 # ~~~ Library targets ~~~
 libescape_g.so: $(dyn_debug_objs)
-	$(CC) $(LTO_FLAG) -shared $^ -o $@
+	$(CC) -shared $^ -o $@
 
 libescape.so: $(dyn_release_objs)
 	$(CC) $(STRIP_FLAG) -shared $^ -o $@
 
 libescape_g.a: $(stc_debug_objs)
-	$(AR) $(LTO_FLAG) -cr $@ $?
+	$(AR) -rcs $@ $?
 
 libescape.a: $(stc_release_objs)
-	$(AR) -cr $@ $?
+	$(AR) -rcs $@ $?
 
 # ~~~ Pattern rules for tests of all build types ~~~
 test-%-sr: $(test_dir)/%.c libescape.a
@@ -105,21 +114,28 @@ test-%-dr: $(test_dir)/%.c libescape.so
 test-%-dd: $(test_dir)/%.c libescape_g.so
 	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
-# ~~~ "every" rules to test all that can be built
-# Pattern rules won't allow you to generalize this :
-# https://www.gnu.org/software/make/manual/html_node/Match_002dAnything-Rules.html
-every-sr-test: $(addsuffix -sr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-sd-test: $(addsuffix -sd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-dr-test: $(addsuffix -dr,$(addprefix test-,$(basename $(notdir $(test_sources)))))
-every-dd-test: $(addsuffix -dd,$(addprefix test-,$(basename $(notdir $(test_sources)))))
+# ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
+run-%-sr: test-%-sr
+	./$<
+run-%-sd: test-%-sd
+	./$<
+run-%-dr: test-%-dr
+	./$<
+run-%-dd: test-%-dd
+	./$<
+
+# ~~~ "every" rules to test all that can be built ~~~
+.NOTINTERMEDIATE:
+every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
 everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
 everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
 
 # ~~~ Required directories ~~~
-%/release:; mkdir -p "$@"
-%/debug:;   mkdir -p "$@"
+# The double quotes are required to work properly on Windows
+$(build_dir)/static/debug $(build_dir)/static/release $(build_dir)/dynamic/debug $(build_dir)/dynamic/release:
+	mkdir -p "$@"
 
 # ~~~ Pattern rules for objects of all build types ~~~
 $(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/debug
