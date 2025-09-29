@@ -1,5 +1,9 @@
 # ~~~ Configurable options (overrideable from cmdline) ~~~
-CONFIG = build.cfg
+CONFIG = build.default.cfg
+ifneq ($(file < build.cfg),)
+CONFIG := build.cfg
+endif
+
 include ${CONFIG}
 
 override missing-opt-err = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)

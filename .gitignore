@@ -2,6 +2,7 @@
 # so that maintainers can freely edit it without anyone knowing
 # while still providing some defaults
 *.cfg
+!build.default.cfg
 
 # produced by make
 build/
