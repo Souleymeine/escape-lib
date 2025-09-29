@@ -1,10 +1,18 @@
+# config files
+# so that maintainers can freely edit it without anyone knowing
+# while still providing some defaults
+*.cfg
+
+# produced by make
 build/
+test-*-dd
+test-*-dr
+test-*-sd
+test-*-sr
 
 # clangd related
-compile_commands.json
 .cache/
 
-test-*
 
 ## From Github template : https://github.com/github/gitignore/blob/main/C.gitignore
 # Prerequisites
