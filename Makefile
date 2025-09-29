@@ -1,10 +1,10 @@
 # ~~~ Configurable options (overrideable from cmdline) ~~~
 CONFIG = build.default.cfg
 ifneq ($(file < build.cfg),)
-CONFIG := build.cfg
+CONFIG = build.cfg
 endif
 
-include ${CONFIG}
+include $(CONFIG)
 
 override missing-opt-err = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)
 
@@ -44,8 +44,8 @@ else
 fsan := -fsanitize=address,leak,undefined
 endif
 
-OBJ_FLAGS     := -MMD -MP -c
-BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir) $(CFLAGS)
+OBJ_FLAGS     := -MMD -MP -c $(CFLAGS)
+BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir)
 DEBUG_FLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG $(fsan)
 RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror
 STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
@@ -133,7 +133,6 @@ run-%-dd: test-%-dd
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
 everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
-.NOTINTERMEDIATE:
 everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
 
