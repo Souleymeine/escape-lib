@@ -39,8 +39,7 @@ void cool_test()
 In the next branches.
 (Of course the latter is horrible but you get the point).
 
-# TODO
----
+## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
 - [ ] Better support for CJK characters, mostly full width characters
