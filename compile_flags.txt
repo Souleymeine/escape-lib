@@ -3,3 +3,5 @@
 -std=c23
 -I
 ./include
+-D
+DEBUG
