@@ -1,4 +1,4 @@
-**NOTE : This project is nothing more than a draft for now.**
+This project uses semantic versioning : https://semver.org/
 
 ## Developpement scheme
 The project will use the `feature` / `bugfix` / `test` convetion for branch names but adds another one called "goal".

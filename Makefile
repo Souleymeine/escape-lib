@@ -7,6 +7,7 @@ endif
 include $(CONFIG)
 
 override missing-opt-err = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)
+override missing-ver-err = $(error Missing $(1) number in $(CONFIG))
 
 # Checking for missing options
 ifndef OPTIM_LVL
@@ -22,6 +23,21 @@ ifndef LTO
 $(call missing-opt-err,LTO)
 endif
 
+ifndef MAJOR_VER
+$(call missing-ver-err,MAJOR_VER)
+endif
+ifndef MINOR_VER
+$(call missing-ver-err,MINOR_VER)
+endif
+ifndef PATCH_VER
+$(call missing-ver-err,PATCH_VER)
+endif
+ifndef PRE_RELEASE_VER
+$(call missing-ver-err,PRE_RELEASE_VER)
+endif
+
+VERSION_NUMBER := $(MAJOR_VER).$(MINOR_VER).$(PATCH_VER)-$(PRE_RELEASE_VER)
+
 # ~~~ Make options ~~~
 SHELL = /bin/sh
 override MAKEFLAGS += --no-builtin-rules
@@ -31,6 +47,7 @@ include_dir := ./include
 build_dir   := ./build
 src_dir     := ./src
 test_dir    := ./test
+dist_dir    := escape-$(VERSION_NUMBER)
 
 # ~~~ Flags ~~~
 # On Windows with mingw, gcc doesn't support any form of sanitization
@@ -52,6 +69,7 @@ STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
 LTO_FLAG      := $(if $(filter true yes 1,$(LTO)),-flto)
 
 # ~~~ Files (sources, objects) ~~~
+dist_tarball     := $(dist_dir).tar.xz
 sources          := $(wildcard $(src_dir)/*.c)
 test_sources     := $(wildcard $(test_dir)/*.c)
 dyn_debug_objs   := $(sources:$(src_dir)/%.c=$(build_dir)/dynamic/debug/%.o)
@@ -61,6 +79,7 @@ stc_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/static/release/%.o)
 
 # Default target (declared as the first rule in the Makefile)
 all: libescape.a
+
 
 # ~~~ Cleaning rules ~~~
 # See https://www.gnu.org/software/make/manual/html_node/Standard-Targets.html
@@ -86,11 +105,16 @@ clean-dd:
 	-rm -rf $(build_dir)/dynamic/debug libescape_g.so
 
 distclean:
-	-rm -f escape*.tar.*
+	-rm -rf $(dist_tarball)
 
-# TODO targets to add : dist
+dist: $(dist_tarball)
+$(dist_tarball): libescape_g.so libescape.so libescape_g.a libescape.a
+	mkdir $(dist_dir)
+	ln -s $(addprefix ../, README.md $(notdir $(include_dir)) $^) $(dist_dir)
+	ln -s ../LICENSE.md $(dist_dir)/COPYING
+	tar -hcJf $(dist_tarball) $(dist_dir)
+	rm -rf $(dist_dir)
 
-.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
 
 # ~~~ Library targets ~~~
 libescape_g.so: $(dyn_debug_objs)
@@ -118,6 +142,9 @@ test-%-dr: $(test_dir)/%.c libescape.so
 test-%-dd: $(test_dir)/%.c libescape_g.so
 	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
+.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
+.PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
+
 # ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
 run-%-sr: test-%-sr
 	./$<
@@ -129,15 +156,12 @@ run-%-dd: test-%-dd
 	./$<
 
 # ~~~ "every" rules to test all that can be built ~~~
-.NOTINTERMEDIATE:
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
 everylib: libescape_g.so libescape.so libescape_g.a libescape.a
 # Will build all library targets since tests depend on them
 everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
-
-# ~~~ Required directories ~~~
-# The double quotes are required to work properly on Windows
+# ~~~ Directory targets ~~~
 $(build_dir)/static/debug $(build_dir)/static/release $(build_dir)/dynamic/debug $(build_dir)/dynamic/release:
 	mkdir -p "$@"
 

@@ -11,6 +11,9 @@ test-*-dr
 test-*-sd
 test-*-sr
 
+dist-*/
+escape-*.tar*
+
 # clangd related
 .cache/
 
