@@ -110,7 +110,7 @@ test-%-sr: $(test_dir)/%.c libescape.a
 	$(CC) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) $(STRIP_FLAG) $< -o $@ $(lastword $^)
 
 test-%-sd: $(test_dir)/%.c libescape_g.a
-	$(CC) $(BASE_FLAGS) $(LTO_FLAG) $(DEBUG_FLAGS) $< -o $@ $(lastword $^)
+	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) $< -o $@ $(lastword $^)
 
 test-%-dr: $(test_dir)/%.c libescape.so
 	$(CC) $(BASE_FLAGS) $(RELEASE_FLAGS) $(STRIP_FLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
@@ -146,10 +146,10 @@ $(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/debug
 	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(DEBUG_FLAGS) -fPIC $< -o $@
 
 $(build_dir)/dynamic/release/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/release
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(RELEASE_FLAGS) -fPIC $< -o $@
+	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) -fPIC $< -o $@
 
 $(build_dir)/static/debug/%.o: $(src_dir)/%.c | $(build_dir)/static/debug
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(LTO_FLAG) $(DEBUG_FLAGS) $< -o $@
+	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(DEBUG_FLAGS) $< -o $@
 
 $(build_dir)/static/release/%.o: $(src_dir)/%.c | $(build_dir)/static/release
 	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) $< -o $@
