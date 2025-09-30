@@ -97,7 +97,7 @@ libescape_g.so: $(dyn_debug_objs)
 	$(CC) -shared $^ -o $@
 
 libescape.so: $(dyn_release_objs)
-	$(CC) $(STRIP_FLAG) -shared $^ -o $@
+	$(CC) $(LTO_FLAG) $(STRIP_FLAG) -shared $^ -o $@
 
 libescape_g.a: $(stc_debug_objs)
 	$(AR) -rcs $@ $?
