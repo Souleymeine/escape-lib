@@ -65,7 +65,7 @@ all: libescape.a
 # ~~~ Cleaning rules ~~~
 # See https://www.gnu.org/software/make/manual/html_node/Standard-Targets.html
 clean:
-	-rm -rf $(build_dir) libescape*{.a,.so} *-{sr,sd,dr,dd}
+	-rm -rf $(build_dir) libescape*{.a,.so} test-*-{sr,sd,dr,dd}
 mostlyclean:
 	-rm -rf $(build_dir)
 cleanlib:
