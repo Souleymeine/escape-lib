@@ -64,7 +64,7 @@ endif
 OBJ_FLAGS     := -MMD -MP -c $(CFLAGS)
 BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir)
 DEBUG_FLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG $(fsan)
-RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror
+RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror -DNDEBUG
 STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
 LTO_FLAG      := $(if $(filter true yes 1,$(LTO)),-flto)
 
@@ -81,7 +81,7 @@ stc_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/static/release/%.o)
 all: libescape.a
 
 
-# ~~~ Cleaning rules ~~~
+# ~~~ "Standard targets", mostly cleaning rules ~~~
 # See https://www.gnu.org/software/make/manual/html_node/Standard-Targets.html
 clean:
 	-rm -rf $(build_dir) libescape*{.a,.so} test-*-{sr,sd,dr,dd}
@@ -91,18 +91,6 @@ cleanlib:
 	-rm -f libescape*{.a,.so}
 cleantest:
 	-rm -f test-*-{sr,sd,dr,dd}
-
-# 1st prefix letter - [s]tatic | [d]ynamic
-# 2nd prefix letter - [d]ebug  | [r]elease
-# (Also applies to tests, see below)
-clean-sr:
-	-rm -rf $(build_dir)/static/release libescape.a
-clean-sd:
-	-rm -rf $(build_dir)/static/debug libescape_g.a
-clean-dr:
-	-rm -rf $(build_dir)/dynamic/release libescape.so
-clean-dd:
-	-rm -rf $(build_dir)/dynamic/debug libescape_g.so
 
 distclean:
 	-rm -rf $(dist_tarball)
@@ -115,6 +103,15 @@ $(dist_tarball): libescape_g.so libescape.so libescape_g.a libescape.a
 	tar -hcJf $(dist_tarball) $(dist_dir)
 	rm -rf $(dist_dir)
 
+# For the meaning of suffixes, see test targets bellow
+clean-sr:
+	-rm -rf $(build_dir)/static/release libescape.a
+clean-sd:
+	-rm -rf $(build_dir)/static/debug libescape_g.a
+clean-dr:
+	-rm -rf $(build_dir)/dynamic/release libescape.so
+clean-dd:
+	-rm -rf $(build_dir)/dynamic/debug libescape_g.so
 
 # ~~~ Library targets ~~~
 libescape_g.so: $(dyn_debug_objs)
@@ -130,6 +127,8 @@ libescape.a: $(stc_release_objs)
 	$(AR) -rcs $@ $?
 
 # ~~~ Pattern rules for tests of all build types ~~~
+# 1st prefix letter - [s]tatic | [d]ynamic
+# 2nd prefix letter - [d]ebug  | [r]elease
 test-%-sr: $(test_dir)/%.c libescape.a
 	$(CC) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) $(STRIP_FLAG) $< -o $@ $(lastword $^)
 
@@ -142,9 +141,6 @@ test-%-dr: $(test_dir)/%.c libescape.so
 test-%-dd: $(test_dir)/%.c libescape_g.so
 	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
-.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
-.PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
-
 # ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
 run-%-sr: test-%-sr
 	./$<
@@ -155,10 +151,11 @@ run-%-dr: test-%-dr
 run-%-dd: test-%-dd
 	./$<
 
+.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
+.PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
+
 # ~~~ "every" rules to test all that can be built ~~~
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
-everylib: libescape_g.so libescape.so libescape_g.a libescape.a
-# Will build all library targets since tests depend on them
 everything: every-sr-test every-sd-test every-dr-test every-dd-test
 
 # ~~~ Directory targets ~~~
