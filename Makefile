@@ -143,13 +143,13 @@ test-%-dd: $(test_dir)/%.c libescape_g.so
 
 # ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
 run-%-sr: test-%-sr
-	./$<
+	./$< $(arg)
 run-%-sd: test-%-sd
-	./$<
+	./$< $(arg)
 run-%-dr: test-%-dr
-	./$<
+	./$< $(arg)
 run-%-dd: test-%-dd
-	./$<
+	./$< $(arg)
 
 .PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
 .PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
