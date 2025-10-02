@@ -105,13 +105,15 @@ $(dist_tarball): libescape_g.so libescape.so libescape_g.a libescape.a
 
 # For the meaning of suffixes, see test targets bellow
 clean-sr:
-	-rm -rf $(build_dir)/static/release libescape.a
+	-rm -rf $(build_dir)/static/release libescape.a test-*-sr
 clean-sd:
-	-rm -rf $(build_dir)/static/debug libescape_g.a
+	-rm -rf $(build_dir)/static/debug libescape_g.a test-*-sd
 clean-dr:
-	-rm -rf $(build_dir)/dynamic/release libescape.so
+	-rm -rf $(build_dir)/dynamic/release libescape.so test-*-dr
 clean-dd:
-	-rm -rf $(build_dir)/dynamic/debug libescape_g.so
+	-rm -rf $(build_dir)/dynamic/debug libescape_g.so test-*-dd
+
+.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
 
 # ~~~ Library targets ~~~
 libescape_g.so: $(dyn_debug_objs)
@@ -150,9 +152,6 @@ run-%-dr: test-%-dr
 	./$< $(arg)
 run-%-dd: test-%-dd
 	./$< $(arg)
-
-.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
-.PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
 
 # ~~~ "every" rules to test all that can be built ~~~
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
