@@ -12,10 +12,11 @@ jobs:
           style: file
   make-every-targets:
     runs-on: ubuntu-latest
-    - uses: actions/checkout@v5
-    - uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: clang
-        version: 1.0
-    - run: make everything CC=clang -j
+    steps:
+      - uses: actions/checkout@v5
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: clang
+          version: 1.0
+      - run: make everything CC=clang -j
 
