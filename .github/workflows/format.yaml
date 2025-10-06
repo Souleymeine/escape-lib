@@ -1,5 +1,5 @@
 name: Build Tests and Check Format with clang-format
-run-name: Checking format and testing builds based on changes pushed by ${{ github.actor }}
+run-name: Check format and test builds based on changes pushed by ${{ github.actor }}
 on: [push]
 jobs:
   clang-format-checking:
