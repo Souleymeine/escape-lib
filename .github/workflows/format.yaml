@@ -1,4 +1,4 @@
-name: Build Tests and Check Format with clang-format
+name: Format Checking and Build Integrity
 run-name: Check format and test builds based on changes pushed by ${{ github.actor }}
 on: [push]
 jobs:
