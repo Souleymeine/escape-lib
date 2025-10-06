@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbit.h>
 #include <uchar.h>
 
@@ -6,11 +7,12 @@
 enum utf8cpt_type get_utf8cpt_type(const char8_t c)
 {
 	// https://www.rfc-editor.org/rfc/rfc3629#section-3
-	if (stdc_bit_width_uc(c) < 8) {
+	if (stdc_bit_width_uc(c) < 8u) {
 		return ASCII;
 	} else {
 		const unsigned char leading_ones = stdc_leading_ones_uc(c);
-		if (stdc_first_leading_zero_uc(c) == (unsigned char)(leading_ones + 1)) {
+		assert(leading_ones <= 4u);
+		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
 			return leading_ones;
 		}
 	}

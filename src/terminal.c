@@ -27,13 +27,15 @@ static FLAG_T current_flags = 0;
 void init_term()
 {
 #if __unix__
+
 	tcgetattr(STDIN_FILENO, &current_term_attr);
+
 #elif _WIN32
+
 	h_stdin  = GetStdHandle(STD_INPUT_HANDLE);
 	h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	GetConsoleMode(h_stdout, &og_stdout_mode);
 	GetConsoleMode(h_stdin, &og_stdin_mode);
+	GetConsoleMode(h_stdout, &og_stdout_mode);
 
 	SetConsoleMode(h_stdout, og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
@@ -42,6 +44,7 @@ void init_term()
 	SetConsoleMode(h_stdin, new_in_mode);
 
 	og_output_cp = GetConsoleOutputCP();
+
 #endif
 
 	// TODO : gather termcaps but without termcap/terminfo
@@ -55,16 +58,19 @@ int set_termflags(const FLAG_T flags)
 	}
 
 #if __unix__
+
 	current_term_attr.c_lflag = (flags & NO_ECHO) ? current_term_attr.c_lflag & (~ECHO) : current_term_attr.c_lflag | ECHO;
 	tcsetattr(STDIN_FILENO, 0, &current_term_attr);
+
 #elif _WIN32
-	/* "This mode [`ENABLE_ECHO_INPUT`] can be used only if the ENABLE_LINE_INPUT mode is also
-	 * enabled."
+
+	/* "This mode [`ENABLE_ECHO_INPUT`] can be used only if the ENABLE_LINE_INPUT mode is also enabled."
 	 * - https://learn.microsoft.com/en-us/windows/console/setconsolemode
 	 * TODO : some "side effects" are caused by the combination of those two flags, (presumably
 	 * something that has to do with line buffering) and should be studied with more care. */
 	SetConsoleMode(h_stdin,
 	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
+
 #endif
 
 	printf(CSI "?1049%c", flags & ALTBUF ? 'h' : 'l');

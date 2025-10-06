@@ -12,17 +12,13 @@
 #if _WIN32
 static inline RECT get_conwin_rect()
 {
-	HWND conwin_hndl = GetConsoleWindow();
-	/* Newest Terminal only envvars
-	 * true if the program is running inside Microsoft's newer "Terminal" terminal
-	 * emulator */
-	if (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr) {
-		conwin_hndl = GetWindow(conwin_hndl, GW_OWNER);
-	}
-
 	RECT conwin_rect;
-	GetWindowRect(conwin_hndl, &conwin_rect);
+	// Newest Terminal only envvars. true if the program is running inside Microsoft's newer "Terminal" terminal emulator.
+	HWND conwin_hndl = (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr)
+		? GetWindow(conwin_hndl, GW_OWNER)
+		: GetConsoleWindow();
 
+	GetWindowRect(conwin_hndl, &conwin_rect);
 	return conwin_rect;
 }
 #endif
