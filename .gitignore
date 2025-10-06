@@ -14,6 +14,17 @@ test-*-sr
 dist-*/
 escape-*.tar*
 
+# Temp files extensions
+*.i
+*.s
+*.bc
+
+# LTO temp files extensions (weird)
+*.lto_wrapper_args
+*.ltrans*
+*.res
+*.args.0
+
 # clangd related
 .cache/
 

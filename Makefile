@@ -6,33 +6,30 @@ endif
 
 include $(CONFIG)
 
-override missing-opt-err = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)
-override missing-ver-err = $(error Missing $(1) number in $(CONFIG))
+# ~~~ Checking for missing options ~~~
+override missing-opt-err       = $(error Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=...`)
+override missing-ver-err       = $(error Missing $(1) number in $(CONFIG))
+override missing-opt-war-yesno = $(warning Please specify "$(1)" in $(CONFIG) or from the commandline, e.g. `$$ make $(MAKECMDGOALS) $(1)=[yes][no]`)
 
-# Checking for missing options
-ifndef OPTIM_LVL
+ifndef      LD
+$(call missing-opt-err,LD)
+else ifndef OPTIM_LVL
 $(call missing-opt-err,OPTIM_LVL)
-endif
-ifndef DEBUG_VERB_LVL
-$(call missing-opt-err,DEBUG_VERB_LVL)
-endif
-ifndef STRIP
-$(call missing-opt-err,STRIP)
-endif
-ifndef LTO
-$(call missing-opt-err,LTO)
-endif
-
-ifndef MAJOR_VER
+else ifndef DBG_VERB_LVL
+$(call missing-opt-err,DBG_VERB_LVL)
+else ifndef TEMPS
+$(call missing-opt-war-yesno,TEMPS)
+else ifndef STRIP
+$(call missing-opt-war-yesno,STRIP)
+else ifndef LTO
+$(call missing-opt-war-yesno,LTO)
+else ifndef MAJOR_VER
 $(call missing-ver-err,MAJOR_VER)
-endif
-ifndef MINOR_VER
+else ifndef MINOR_VER
 $(call missing-ver-err,MINOR_VER)
-endif
-ifndef PATCH_VER
+else ifndef PATCH_VER
 $(call missing-ver-err,PATCH_VER)
-endif
-ifndef PRE_RELEASE_VER
+else ifndef PRE_RELEASE_VER
 $(call missing-ver-err,PRE_RELEASE_VER)
 endif
 
@@ -61,12 +58,24 @@ else
 fsan := -fsanitize=address,leak,undefined
 endif
 
-OBJ_FLAGS     := -MMD -MP -c $(CFLAGS)
 BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir)
-DEBUG_FLAGS   := -g$(DEBUG_VERB_LVL) -O0 -DDEBUG $(fsan)
+OBJ_FLAGS     := -MMD -MP -c
+DEBUG_FLAGS   := -g$(DBG_VERB_LVL) -O0 -DDEBUG $(fsan)
 RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror -DNDEBUG
+TEMPS_FLAGS   := $(if $(filter true yes 1,$(TEMPS)),-fverbose-asm -save-temps=obj)
+# intermediate files may contain syntax that is not compliant with the C standard
+ifeq ($(TEMPS_FLAGS),)
+DEBUG_FLAGS   += -pedantic
+RELEASE_FLAGS += -pedantic-errors
+endif
 STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
 LTO_FLAG      := $(if $(filter true yes 1,$(LTO)),-flto)
+# -fuse-ld=ld doesn't work with gcc, so the flag is expanded to -fuse-ld=ld ONLY if CC is gcc and LD is not ld, or if CC is not gcc
+# zig cc also seems to freak out on release test targets. Still don't know why but it will be disabled for now
+USE_LD_FLAG   := $(if $(or $(and $(filter gcc,$(CC)),$(filter-out ld,$(LD))),$(filter-out gcc zig cc,$(CC))),-fuse-ld=$(LD))
+
+RELEASE_OBJ_FLAGS := $(OBJ_FLAGS) $(BASE_FLAGS) $(RELEASE_FLAGS)
+DEBUG_OBJ_FLAGS   := $(OBJ_FLAGS) $(BASE_FLAGS) $(DEBUG_FLAGS)
 
 # ~~~ Files (sources, objects) ~~~
 dist_tarball     := $(dist_dir).tar.xz
@@ -77,23 +86,25 @@ dyn_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/dynamic/release/%.o)
 stc_debug_objs   := $(sources:$(src_dir)/%.c=$(build_dir)/static/debug/%.o)
 stc_release_objs := $(sources:$(src_dir)/%.c=$(build_dir)/static/release/%.o)
 
+
 # Default target (declared as the first rule in the Makefile)
 all: libescape.a
 
-
-# ~~~ "Standard targets", mostly cleaning rules ~~~
+# ~~~ "Standard targets" and cleaning rules ~~~
 # See https://www.gnu.org/software/make/manual/html_node/Standard-Targets.html
-clean:
-	-rm -rf $(build_dir) libescape*{.a,.so} test-*-{sr,sd,dr,dd}
-mostlyclean:
-	-rm -rf $(build_dir)
-cleanlib:
-	-rm -f libescape*{.a,.so}
-cleantest:
-	-rm -f test-*-{sr,sd,dr,dd}
+# For the meaning of suffixes, see test targets bellow
+cleanlib:;    -rm -f libescape*{.a,.so}
+cleantest:;   -rm -f test-*-{sr,sd,dr,dd}
+mostlyclean:; -rm -rf $(build_dir)
+distclean:;   -rm -rf $(dist_tarball)
+clean:;       -rm -rf $(build_dir) libescape*{.a,.so,.i,.s} test-*-{sr,sd,dr,dd}
+clean-temps:; -rm -f $(build_dir)/**/**/*{.i,.s,.bc} *{.i,.s,.o,.bc} *.lto_wrapper_args *.ltrans* *.res *.args.0
+clean-sr:;    -rm -rf $(build_dir)/static/release libescape.a test-*-sr test-*-sr-*{.i,.s,.o}
+clean-sd:;    -rm -rf $(build_dir)/static/debug libescape_g.a test-*-sd test-*-sd-*{.i,.s,.o}
+clean-dr:;    -rm -rf $(build_dir)/dynamic/release libescape.so test-*-dr test-*-dr-*{.i,.s,.o}
+clean-dd:;    -rm -rf $(build_dir)/dynamic/debug libescape_g.so test-*-dd test-*-dd-*{.i,.s,.o}
 
-distclean:
-	-rm -rf $(dist_tarball)
+.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd clean-temps
 
 dist: $(dist_tarball)
 $(dist_tarball): libescape_g.so libescape.so libescape_g.a libescape.a
@@ -103,76 +114,62 @@ $(dist_tarball): libescape_g.so libescape.so libescape_g.a libescape.a
 	tar -hcJf $(dist_tarball) $(dist_dir)
 	rm -rf $(dist_dir)
 
-# For the meaning of suffixes, see test targets bellow
-clean-sr:
-	-rm -rf $(build_dir)/static/release libescape.a test-*-sr
-clean-sd:
-	-rm -rf $(build_dir)/static/debug libescape_g.a test-*-sd
-clean-dr:
-	-rm -rf $(build_dir)/dynamic/release libescape.so test-*-dr
-clean-dd:
-	-rm -rf $(build_dir)/dynamic/debug libescape_g.so test-*-dd
-
-.PHONY: clean mostlyclean cleanlib cleantest distclean clean-sr clean-sd clean-dr clean-dd
-
 # ~~~ Library targets ~~~
-libescape_g.so: $(dyn_debug_objs)
-	$(CC) -shared $^ -o $@
-
-libescape.so: $(dyn_release_objs)
-	$(CC) $(LTO_FLAG) $(STRIP_FLAG) -shared $^ -o $@
+libescape.a: $(stc_release_objs)
+	$(AR) -rcs $@ $?
 
 libescape_g.a: $(stc_debug_objs)
 	$(AR) -rcs $@ $?
 
-libescape.a: $(stc_release_objs)
-	$(AR) -rcs $@ $?
+libescape.so: $(dyn_release_objs)
+	$(CC) $(USE_LD_FLAG) $(LTO_FLAG) $(STRIP_FLAG) -shared $^ -o $@
+
+libescape_g.so: $(dyn_debug_objs)
+	$(CC) $(USE_LD_FLAG) -shared $^ -o $@
 
 # ~~~ Pattern rules for tests of all build types ~~~
 # 1st prefix letter - [s]tatic | [d]ynamic
 # 2nd prefix letter - [d]ebug  | [r]elease
 test-%-sr: $(test_dir)/%.c libescape.a
-	$(CC) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) $(STRIP_FLAG) $< -o $@ $(lastword $^)
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) $(LTO_FLAG) $< -o $@ $(lastword $^)
 
 test-%-sd: $(test_dir)/%.c libescape_g.a
-	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) $< -o $@ $(lastword $^)
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) $< -o $@ $(lastword $^)
 
 test-%-dr: $(test_dir)/%.c libescape.so
-	$(CC) $(BASE_FLAGS) $(RELEASE_FLAGS) $(STRIP_FLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
 test-%-dd: $(test_dir)/%.c libescape_g.so
-	$(CC) $(BASE_FLAGS) $(DEBUG_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
 
 # ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
-run-%-sr: test-%-sr
-	./$< $(arg)
-run-%-sd: test-%-sd
-	./$< $(arg)
-run-%-dr: test-%-dr
-	./$< $(arg)
-run-%-dd: test-%-dd
-	./$< $(arg)
+run-%-sr: test-%-sr; ./$< $(arg)
+run-%-sd: test-%-sd; ./$< $(arg)
+run-%-dr: test-%-dr; ./$< $(arg)
+run-%-dd: test-%-dd; ./$< $(arg)
+
+.PRECIOUS: test-%-sr test-%-sd test-%-dr test-%-dd
 
 # ~~~ "every" rules to test all that can be built ~~~
 every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_sources)))));
-everything: every-sr-test every-sd-test every-dr-test every-dd-test
+everything: every-sr-test every-sd-test every-dr-test every-dd-test;
 
 # ~~~ Directory targets ~~~
-$(build_dir)/static/debug $(build_dir)/static/release $(build_dir)/dynamic/debug $(build_dir)/dynamic/release:
-	mkdir -p "$@"
+$(build_dir)/%/release:; mkdir -p "$@"
+$(build_dir)/%/debug:;   mkdir -p "$@"
 
-# ~~~ Pattern rules for objects of all build types ~~~
+# ~~~ Pattern rules for objects/asm outputs of all build types ~~~
 $(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/debug
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(DEBUG_FLAGS) -fPIC $< -o $@
+	$(CC) $(TEMPS_FLAGS) $(DEBUG_OBJ_FLAGS) -fPIC $< -o $@
 
 $(build_dir)/dynamic/release/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/release
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) -fPIC $< -o $@
+	$(CC) $(TEMPS_FLAGS) $(RELEASE_OBJ_FLAGS) -fPIC $< -o $@
 
 $(build_dir)/static/debug/%.o: $(src_dir)/%.c | $(build_dir)/static/debug
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(DEBUG_FLAGS) $< -o $@
+	$(CC) $(TEMPS_FLAGS) $(DEBUG_OBJ_FLAGS) $< -o $@
 
 $(build_dir)/static/release/%.o: $(src_dir)/%.c | $(build_dir)/static/release
-	$(CC) $(OBJ_FLAGS) $(BASE_FLAGS) $(LTO_FLAG) $(RELEASE_FLAGS) $< -o $@
+	$(CC) $(TEMPS_FLAGS) $(RELEASE_OBJ_FLAGS) $(LTO_FLAG) $< -o $@
 
 # ~~~ Specific object targets based inlcude directives (generated by $(CC) where the objects live) ~~~
 -include $(dyn_debug_objs:.o=.d)
