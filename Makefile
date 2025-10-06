@@ -155,8 +155,8 @@ every-%-test: $(addsuffix -%,$(addprefix test-,$(basename $(notdir $(test_source
 everything: every-sr-test every-sd-test every-dr-test every-dd-test;
 
 # ~~~ Directory targets ~~~
-$(build_dir)/%/release:; mkdir -p "$@"
-$(build_dir)/%/debug:;   mkdir -p "$@"
+$(build_dir)/static/release $(build_dir)/dynamic/release $(build_dir)/static/debug $(build_dir)/dynamic/debug:
+	mkdir -p "$@"
 
 # ~~~ Pattern rules for objects/asm outputs of all build types ~~~
 $(build_dir)/dynamic/debug/%.o: $(src_dir)/%.c | $(build_dir)/dynamic/debug
