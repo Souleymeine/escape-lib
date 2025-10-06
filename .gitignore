@@ -1,8 +1,33 @@
+# config files
+# so that maintainers can freely edit it without anyone knowing
+# while still providing some defaults
+*.cfg
+!build.default.cfg
+
+# produced by make
 build/
+test-*-dd
+test-*-dr
+test-*-sd
+test-*-sr
+
+dist-*/
+escape-*.tar*
+
+# Temp files extensions
+*.i
+*.s
+*.bc
+
+# LTO temp files extensions (weird)
+*.lto_wrapper_args
+*.ltrans*
+*.res
+*.args.0
 
 # clangd related
-compile_commands.json
 .cache/
+
 
 ## From Github template : https://github.com/github/gitignore/blob/main/C.gitignore
 # Prerequisites

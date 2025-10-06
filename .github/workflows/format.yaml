@@ -1,13 +1,22 @@
-name: Clang Format Checker
-run-name: Formatting files ${{ github.actor }} pushed recently
+name: Build Tests and Check Format with clang-format
+run-name: Check format and test builds based on changes pushed by ${{ github.actor }}
 on: [push]
 jobs:
   clang-format-checking:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: RafikFarhad/clang-format-github-action@v5
         with:
-          sources: "src/**/*.h,src/**/*.c,test/**/*.c"
+          sources: "src/*.c,include/*.h,test/*.c"
           style: file
+  make-every-target:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: clang
+          version: 1.0
+      - run: make everything CC=clang -j
 

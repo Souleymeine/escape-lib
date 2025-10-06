@@ -1,4 +1,5 @@
 #include <stdbit.h>
+#include <uchar.h>
 
 #include "grapheme.h"
 
@@ -9,7 +10,7 @@ enum utf8cpt_type get_utf8cpt_type(const char8_t c)
 		return ASCII;
 	} else {
 		const unsigned char leading_ones = stdc_leading_ones_uc(c);
-		if (stdc_first_leading_zero_uc(c) == leading_ones + 1) {
+		if (stdc_first_leading_zero_uc(c) == (unsigned char)(leading_ones + 1)) {
 			return leading_ones;
 		}
 	}

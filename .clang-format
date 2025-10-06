@@ -1,6 +1,6 @@
 BasedOnStyle: LLVM
 
-UseTab: ForIndentation
+UseTab: AlignWithSpaces
 IndentWidth: 4
 TabWidth: 4
 
@@ -34,8 +34,6 @@ AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 
 BinPackArguments: true
 
-BinPackParameters: OnePerLine
-
 BreakBeforeBraces: Linux
 
 SpaceBeforeParens: ControlStatements
@@ -44,7 +42,7 @@ BreakBeforeTernaryOperators: true
 
 BreakStringLiterals: false
 
-ColumnLimit: 100
+ColumnLimit: 130
 
 IncludeBlocks: Regroup
 IncludeCategories:

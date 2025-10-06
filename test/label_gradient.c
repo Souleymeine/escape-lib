@@ -80,18 +80,17 @@ int main(int argc, char** argv)
 		left_gap_len -= 1;
 	}
 
-	const unsigned short virt_margin_of_error
-	    = ((size.rows % 2) != 0 ? 1 : VIRT_MARGIN_OF_ERR_ALIGN);
-	const unsigned short middle_line = size.rows / 2 + virt_margin_of_error;
+	const unsigned short virt_margin_of_error = ((size.rows % 2) != 0 ? 1 : VIRT_MARGIN_OF_ERR_ALIGN);
+	const unsigned short middle_line          = size.rows / 2 + virt_margin_of_error;
 
 	printf("\x1b[%hu;%huH", middle_line, left_gap_len + 1); // We go to y, x (line, column)
 
 
 	enum utf8cpt_type cpt_i_type = INVALID;
-	uint8_t val              = 0;
+	uint8_t val                  = 0;
 	size_t cpt_i = 0, grapheme_i = 0;
 	while (cpt_i < label_cpt_count) {
-		val = min(232 + ((float)grapheme_i / label_grapheme_count) * 24, 255); // 8 bit color ID
+		val        = min(232 + ((float)grapheme_i / label_grapheme_count) * 24, 255); // 8 bit color ID
 		cpt_i_type = get_utf8cpt_type(label[cpt_i]);
 		if (cpt_i_type == INVALID) {
 			return -1;

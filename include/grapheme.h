@@ -19,7 +19,7 @@ enum utf8cpt_type : char {
  * Return the corresponding `enum cpt_type` for the given character.
  * Defaults to `INVALID` if none of the conditions are met.
  */
-enum utf8cpt_type get_utf8cpt_type(const char8_t);
+enum utf8cpt_type get_utf8cpt_type(const char8_t c);
 
 /**
  * Count the number of graphemes with the given utf8 string.
