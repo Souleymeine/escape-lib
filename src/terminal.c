@@ -24,8 +24,14 @@ static UINT og_output_cp;
 
 static FLAG_T current_flags = 0;
 
+inline void init_flags(FLAG_T flags) {
+	init_term();
+	set_termflags(flags);
+}
+
 void init_term()
 {
+
 #if __unix__
 
 	tcgetattr(STDIN_FILENO, &current_term_attr);
@@ -51,7 +57,7 @@ void init_term()
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
 }
 
-int set_termflags(const FLAG_T flags)
+int set_termflags(FLAG_T flags)
 {
 	if (flags == current_flags) {
 		return -1;

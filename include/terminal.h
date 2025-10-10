@@ -21,10 +21,15 @@ void init_term();
 /* Sets the given terminal flags via bitmask.
  * Available flags are available int `enum termflags`.
  * Returns 0 if flags were applied, -1 if it was the same as before. */
-int set_termflags(const FLAG_T flags);
+int set_termflags(FLAG_T flags);
 
-/* Returns a pointer to the program's static terminal flags. */
-const FLAG_T* get_termflags();
+/* Available for convinience reasons :
+ * Calls `init_term` then set_termflags.
+ * You almost always want to do both during the initializtion of your program. */
+void init_flags(FLAG_T flags);
+
+	/* Returns a pointer to the program's static terminal flags. */
+	const FLAG_T* get_termflags();
 
 #if _WIN32
 /* Same as `GetStdHandle(STD_IN_HANDLE)`, but returns a pointer

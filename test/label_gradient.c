@@ -18,8 +18,7 @@
 
 int main(int argc, char** argv)
 {
-	init_term();
-	set_termflags(ALTBUF | HIDE_CURSOR | NO_ECHO);
+	init_flags(ALTBUF | HIDE_CURSOR | NO_ECHO);
 
 	const struct ro_termsize size = get_termsize();
 
@@ -36,7 +35,7 @@ int main(int argc, char** argv)
 	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
 
 	const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
-	print_8bit_label_gradient(label, strlen(label), BOLD | ITALIC, 235, 255, PREF_LEFT, PREF_TOP);
+	print_8bit_gradient_label(label, strlen(label), BOLD | ITALIC, 232, 255, PREF_LEFT, PREF_TOP);
 
 #if __unix__
 	getchar();
