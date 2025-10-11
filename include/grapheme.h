@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdio.h>
 #include <uchar.h>
 
 /**
@@ -24,8 +25,18 @@ enum cptype : char {
 enum cptype get_cptype(char8_t c);
 
 /**
- * Count the number of graphemes with the given utf8 string.
- * Returns -1 if the string is not valid utf8.
+ * Returns the number of graphemes with the given utf8 string `str`,
+ * -1 if the string is not valid utf8 : this exclude continuation bytes,
+ * which means you could have an invalid utf8 string without count_graphemes returning -1.
+ * This is because count_graphems skips continuation bytes, as the utf8 standard allows us to so for this exact reason.
+ * NOTE THAT : in this case, str would still be useable with any of escape's functions.
+ * If you want to check for the full integrity of `str` as a utf8 string, use `get_invalid_cp`.
+ * `get_invalid_cp` could also be handy if `count_graphemes` does return -1.
  */
-size_t count_graphemes(const char* restrict str, size_t strlen);
+long count_graphemes(const char* restrict str, size_t strlen);
+
+/**
+ * Returns the index of the first invalid utf8 codepoint found in str, -1 if there are none.
+ */
+long get_invalid_cp(const char* restrict str, size_t strlen);
 

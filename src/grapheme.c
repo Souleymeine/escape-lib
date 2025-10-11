@@ -1,6 +1,4 @@
-#include <assert.h>
 #include <stdbit.h>
-#include <stdio.h>
 #include <uchar.h>
 
 #include "grapheme.h"
@@ -12,7 +10,9 @@ enum cptype get_cptype(char8_t c)
 		return ASCII;
 	} else {
 		const unsigned char leading_ones = stdc_leading_ones_uc(c);
-		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
+		if (leading_ones > 4u) {
+			return INVALID;
+		} else if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
 			return leading_ones;
 		}
 	}
@@ -20,7 +20,7 @@ enum cptype get_cptype(char8_t c)
 	return INVALID;
 }
 
-size_t count_graphemes(const char* restrict str, size_t strlen)
+long count_graphemes(const char* restrict str, size_t strlen)
 {
 	unsigned int count = 0;
 
@@ -32,5 +32,17 @@ size_t count_graphemes(const char* restrict str, size_t strlen)
 	}
 
 	return count;
+}
+
+
+int get_invalid_cp(const char* restrict str, size_t strlen)
+{
+	for (size_t i = 0; i < strlen; ++i) {
+		if (get_cptype(str[i]) == INVALID) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
