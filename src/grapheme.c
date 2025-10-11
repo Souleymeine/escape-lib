@@ -35,7 +35,7 @@ long count_graphemes(const char* restrict str, size_t strlen)
 }
 
 
-int get_invalid_cp(const char* restrict str, size_t strlen)
+long get_invalid_cp(const char* restrict str, size_t strlen)
 {
 	for (size_t i = 0; i < strlen; ++i) {
 		if (get_cptype(str[i]) == INVALID) {
