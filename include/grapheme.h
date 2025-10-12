@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <uchar.h>
 
-#include "_escdef.h"
-
 /**
  * Describes the role of a codepoint (aka 'cp') in a utf8 string.
  * This enum can be used to process utf8 strings grapheme by grapheme instead of one 'cp' at a time.
