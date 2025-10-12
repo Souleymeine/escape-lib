@@ -7,10 +7,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: |
-        grep -zq '#include "_escdef.h"' ./include/*.h \
-          && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
-          && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
-          || echo "No internal typedefs included in public library headers."
+          grep -zq '#include "_escdef.h"' ./include/*.h \
+            && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
+            && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
+            || echo "No internal typedefs included in public library headers."
   clang-format-checking:
     runs-on: ubuntu-latest
     steps:
