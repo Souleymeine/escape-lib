@@ -18,11 +18,11 @@ enum cptype get_cptype(char8_t c)
 	 * 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
-	if (stdc_bit_width_uc(c) < 8) {
+	if (stdc_bit_width_uc(c) < 8u) {
 		return ASCII;
 	} else {
 		const uchar leading_ones = stdc_leading_ones_uc(c);
-		if (leading_ones <= 4 && stdc_first_leading_zero_uc(c) == leading_ones + 1) {
+		if (leading_ones <= 4u && stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
 			return leading_ones;
 		}
 	}
