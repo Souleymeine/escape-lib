@@ -14,9 +14,8 @@ static inline RECT get_conwin_rect()
 {
 	RECT conwin_rect;
 	// Newest Terminal only envvars. true if the program is running inside Microsoft's newer "Terminal" terminal emulator.
-	HWND conwin_hndl = (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr)
-		? GetWindow(conwin_hndl, GW_OWNER)
-		: GetConsoleWindow();
+	HWND conwin_hndl = (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr) ? GetWindow(conwin_hndl, GW_OWNER)
+	                                                                                           : GetConsoleWindow();
 
 	GetWindowRect(conwin_hndl, &conwin_rect);
 	return conwin_rect;

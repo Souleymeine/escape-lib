@@ -28,8 +28,8 @@ int set_termflags(FLAG_T flags);
  * You almost always want to do both during the initializtion of your program. */
 void init_flags(FLAG_T flags);
 
-	/* Returns a pointer to the program's static terminal flags. */
-	const FLAG_T* get_termflags();
+/* Returns a pointer to the program's static terminal flags. */
+const FLAG_T* get_termflags();
 
 #if _WIN32
 /* Same as `GetStdHandle(STD_IN_HANDLE)`, but returns a pointer

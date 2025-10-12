@@ -52,5 +52,5 @@ enum vir_offcenter : char { PREF_TOP = -1, PREF_BOTTOM = 1 };
  */
 
 unsigned char label_grad8bit(const char* txt, size_t txtlen, unsigned char txtstyle, uint8_t clr_id1, uint8_t clr_id2,
-                                       enum hor_offcenter hor_offcenter, enum vir_offcenter vir_offcenter);
+                             enum hor_offcenter hor_offcenter, enum vir_offcenter vir_offcenter);
 
