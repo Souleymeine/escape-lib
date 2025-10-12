@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -35,7 +34,7 @@ int main(int argc, char** argv)
 	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
 
 	const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
-	print_8bit_gradient_label(label, strlen(label), BOLD | ITALIC, 232, 255, PREF_LEFT, PREF_TOP);
+	label_grad8bit(label, strlen(label), BOLD | ITALIC, 232, 255, PREF_LEFT, PREF_TOP);
 
 #if __unix__
 	getchar();

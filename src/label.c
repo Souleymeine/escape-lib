@@ -1,46 +1,49 @@
-#include <stddef.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "grapheme.h"
 #include "label.h"
 #include "termsize.h"
 
-#if !(_WIN32)
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif
+#include "_escdef.h"
 
-int print_8bit_label_gradient(const char* txt, size_t txtlen, unsigned char txtstyle [[maybe_unused]], uint8_t clr_id1,
-                              uint8_t clr_id2, enum hor_offcenter hor_offcenter, enum vir_offcenter vir_offcenter)
+// Thanks to 'HumansAreWeak'! : https://github.com/HumansAreWeak/ilerp/blob/master/ilerp.h
+static inline u8 lerp_u8(u8 delta, u8 a, u8 b)
 {
+	return (a * (UINT8_MAX - delta) + b * delta) / UINT8_MAX;
+}
+
+uchar label_grad8bit(const char* txt, size_t txtlen, uchar txtstyle [[maybe_unused]], u8 clr_id1, u8 clr_id2,
+                     enum hor_offcenter hor_offcenter, enum vir_offcenter vir_offcenter)
+{
+	const ushort line_count  = 1; // Will get updated when multilne labels are supported
 	const int grapheme_count = count_graphemes(txt, txtlen);
 	if (grapheme_count == -1) {
-		return -1;
+		return 1;
 	}
 
 	const struct ro_termsize size = get_termsize();
-	// -1 if left-centered, 1 if right-centered, 0 if perfectly centered
-	const char hor_align_err      = (size.cols & 1) - (grapheme_count & 1);
-	const unsigned short left_gap = size.cols / 2 - grapheme_count / 2 + (hor_align_err == hor_offcenter) * hor_align_err;
-	// -1 if top-aligned, 1 if bottom-aligned, 0 if perfectly aligned
-	const unsigned short line_count = 1; // Will get updated when multilne labels will be sopported
-	const char vir_align_err        = (size.rows & 1) - (line_count & 1);
-	const unsigned short top_gap    = size.rows / 2 + (vir_align_err == vir_offcenter) * vir_align_err;
 
-	printf("\x1b[%hu;%huH", top_gap + 1, left_gap + 1); // We go to y, x (line, column)
+	const char hor_offset = (size.cols & 1) - (grapheme_count & 1);
+	const char vir_offset = (size.rows & 1) - (line_count & 1);
+	const ushort top_gap  = (size.rows / 2) - (line_count / 2) + vir_offset * (vir_offset == vir_offcenter);
+	const ushort left_gap = (size.cols / 2) - (grapheme_count / 2) + hor_offset * (hor_offset == hor_offcenter);
 
-	enum cptype type = INVALID;
-	for (size_t cp = 0, grapheme = 0; cp < txtlen; cp += type, ++grapheme) {
-		type = get_cptype(txt[cp]);
-		if (type == INVALID) {
-			return -1;
-		} else {
-			if (cp != 0) {
-				printf("\x1b[m");
-			}
-			printf("\x1b[38;5;%hhu;1;3m%c%.*s", (uint8_t)min(clr_id1 + ((float)grapheme / grapheme_count) * 24, clr_id2), txt[cp],
-			       type - 1, txt + cp + 1);
+	printf("\x1b[%hu;%huH", top_gap + 1, left_gap + 1);
+
+	const u8 clr_count         = clr_id2 - clr_id1;
+	const u8 graphemes_per_clr = grapheme_count / clr_count;
+	enum cptype type           = INVALID;
+	// Checking for invalid codepoints is redundant, count_graphemes already did it (see above)
+	for (size_t cp_i = 0, grapheme_i = 0, clr_i = 0; cp_i < txtlen; cp_i += type, ++grapheme_i) {
+		if (cp_i != 0) {
+			printf("\x1b[m");
 		}
+		// print color only if it has changed since the last grapheme
+		if (graphemes_per_clr <= 1 || grapheme_i % graphemes_per_clr == 0) {
+			printf("\x1b[38;5;%hhum", lerp_u8((float)clr_i / clr_count, clr_id1, clr_id2));
+			++clr_i;
+		}
+		printf("%.*s", (type = get_cptype(txt[cp_i])), txt + cp_i);
 	}
 
 	return 0;
