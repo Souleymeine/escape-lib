@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include <uchar.h>
 
+#include "_escdef.h"
+
 /**
  * Describes the role of a codepoint (aka 'cp') in a utf8 string.
  * This enum can be used to process utf8 strings grapheme by grapheme instead of one 'cp' at a time.
- * try the fonction `count_graphemes`.
+ * see `count_graphemes`.
  */
 enum cptype : char {
 	INVALID = -1,
@@ -19,7 +21,7 @@ enum cptype : char {
 };
 
 /**
- * Return the corresponding `enum cpt_type` for the given character.
+ * Return the corresponding `enum cptype` for the given character.
  * Defaults to `INVALID` if none of the conditions are met.
  */
 enum cptype get_cptype(char8_t c);
