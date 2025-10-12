@@ -24,14 +24,14 @@ static UINT og_output_cp;
 
 static FLAG_T current_flags = 0;
 
-inline void init_flags(FLAG_T flags) {
+inline void init_flags(FLAG_T flags)
+{
 	init_term();
 	set_termflags(flags);
 }
 
 void init_term()
 {
-
 #if __unix__
 
 	tcgetattr(STDIN_FILENO, &current_term_attr);
