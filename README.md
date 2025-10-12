@@ -40,7 +40,7 @@ In the next branches.
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
+- [ ] Get rid of the standard library
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics
 - [ ] Account for other terminal emulators on Windows other than *conhost* and *Terminal*
-
