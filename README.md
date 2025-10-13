@@ -40,6 +40,9 @@ In the next branches.
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
+- [ ] Used zig as a build system rather than make (painful, painful indeed after so many hours writing a Makefile, but necessary).
+    See https://youtu.be/i9nFvSpcCzo?si=yxOfo1hWYExjidIT.
+    "Replacing your dependency on make by zig, and now this new dependency also cross compiles", **marvelous**.
 - [ ] Get rid of the standard library
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics
