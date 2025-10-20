@@ -48,14 +48,14 @@ void ref_termsize(struct termsize* ref)
 #endif
 }
 
-struct ro_termsize get_termsize()
+struct termsize get_termsize()
 {
 #if __unix__
 
 	struct winsize termsize;
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &termsize);
 
-	return (struct ro_termsize){
+	return (struct termsize){
 		.rows = termsize.ws_row,
 		.cols = termsize.ws_col,
 		.xpix = termsize.ws_xpixel,
@@ -68,7 +68,7 @@ struct ro_termsize get_termsize()
 	GetConsoleScreenBufferInfo(*get_g_stdout_hndl(), &scrbuf_info);
 	RECT conwin_rect = get_conwin_rect();
 
-	return (struct ro_termsize){
+	return (struct termsize){
 		.rows = scrbuf_info.dwSize.Y,
 		.cols = scrbuf_info.dwSize.X,
 		.xpix = conwin_rect.right - conwin_rect.left,

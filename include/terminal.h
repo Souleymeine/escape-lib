@@ -4,15 +4,7 @@
 #include <windows.h>
 #endif
 
-// Avoids replacing the type everywhere when required
-#define FLAG_T unsigned int
-
-
-enum termflags : FLAG_T {
-	ALTBUF      = 0x1,
-	HIDE_CURSOR = 0x2,
-	NO_ECHO     = 0x4,
-};
+#include "flags.h"
 
 /* Initialize some states variables and gathers information about the terminal the program is
  * running in. Required for escape sequences to work properly. */
@@ -30,6 +22,9 @@ void init_flags(FLAG_T flags);
 
 /* Returns a pointer to the program's static terminal flags. */
 const FLAG_T* get_termflags();
+
+/* If called bedore init_term, stdscr will use a virtual screen by default. */
+void usevscr();
 
 #if _WIN32
 /* Same as `GetStdHandle(STD_IN_HANDLE)`, but returns a pointer

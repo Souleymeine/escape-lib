@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "label.h"
 #if _WIN32
 #include <conio.h>
 #include <windows.h>
@@ -19,7 +18,7 @@ int main(int argc, char** argv)
 {
 	init_flags(ALTBUF | HIDE_CURSOR | NO_ECHO);
 
-	const struct ro_termsize size = get_termsize();
+	const struct termsize size = get_termsize();
 
 #if _WIN32
 	SetConsoleOutputCP(CP_UTF8);
@@ -34,7 +33,6 @@ int main(int argc, char** argv)
 	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
 
 	const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
-	label_grad8bit(label, strlen(label), BOLD | ITALIC, 232, 255, PREF_LEFT, PREF_TOP);
 
 #if __unix__
 	getchar();

@@ -1,3 +1,4 @@
+#include "screen.h"
 #if _WIN32
 #include <windows.h>
 #elif __unix__
@@ -11,30 +12,35 @@
 // Control Sequence Introducer
 #define CSI "\x1b["
 
+/* --- Global library state --- */
 #if __unix__
-static struct termios current_term_attr;
+static struct termios g_termattr;
 #elif _WIN32
-static HANDLE h_stdin;
-static HANDLE h_stdout;
-static DWORD current_stdin_mode;
+static HANDLE stdin_hndl;
+static HANDLE stdout_hndl;
+static DWORD g_stdin_mode;
 static DWORD og_stdin_mode;
 static DWORD og_stdout_mode;
 static UINT og_output_cp;
 #endif
 
-static FLAG_T current_flags = 0;
+static bool use_vscr  = false;
+static FLAG_T g_flags = 0;
 
-inline void init_flags(FLAG_T flags)
+screen* stdscr;
+
+void usevscr()
 {
-	init_term();
-	set_termflags(flags);
+	use_vscr = true;
 }
 
 void init_term()
 {
+	stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, use_vscr);
+
 #if __unix__
 
-	tcgetattr(STDIN_FILENO, &current_term_attr);
+	tcgetattr(STDIN_FILENO, &g_termattr);
 
 #elif _WIN32
 
@@ -57,16 +63,17 @@ void init_term()
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
 }
 
+// TODO : set only flags that differ if flags and g_flags are not equal
 int set_termflags(FLAG_T flags)
 {
-	if (flags == current_flags) {
+	if (flags == g_flags) {
 		return -1;
 	}
 
 #if __unix__
 
-	current_term_attr.c_lflag = (flags & NO_ECHO) ? current_term_attr.c_lflag & (~ECHO) : current_term_attr.c_lflag | ECHO;
-	tcsetattr(STDIN_FILENO, 0, &current_term_attr);
+	g_termattr.c_lflag = (flags & NO_ECHO) ? g_termattr.c_lflag & (~ECHO) : g_termattr.c_lflag | ECHO;
+	tcsetattr(STDIN_FILENO, 0, &g_termattr);
 
 #elif _WIN32
 
@@ -82,14 +89,19 @@ int set_termflags(FLAG_T flags)
 	printf(CSI "?1049%c", flags & ALTBUF ? 'h' : 'l');
 	printf(CSI "?25%c", flags & HIDE_CURSOR ? 'l' : 'h');
 
-	current_flags = flags;
+	g_flags = flags;
 	return 0;
 }
 
+inline void init_flags(FLAG_T flags)
+{
+	init_term();
+	set_termflags(flags);
+}
 
 const FLAG_T* get_termflags()
 {
-	return &current_flags;
+	return &g_flags;
 }
 
 #if _WIN32
@@ -107,12 +119,15 @@ const HANDLE* get_g_stdout_hndl()
 
 void cleanup_term()
 {
+	freescr(stdscr);
 	set_termflags(0);
 
 #if _WIN32
+
 	SetConsoleOutputCP(og_output_cp);
 	SetConsoleMode(h_stdout, og_stdout_mode);
 	SetConsoleMode(h_stdin, og_stdin_mode);
+
 #endif
 }
 

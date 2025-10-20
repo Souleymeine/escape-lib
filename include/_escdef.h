@@ -38,3 +38,9 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+/*
+ * Use it only when it makes sense, when managing memory for example
+ * Otherwise just use char or uchar
+ */
+typedef unsigned char byte;
+
