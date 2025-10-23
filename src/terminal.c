@@ -24,9 +24,9 @@ static DWORD og_stdout_mode;
 static UINT og_output_cp;
 #endif
 
-static bool use_vscr          = false;
 static termstateflag g_flags = 0;
 
+static bool use_vscr = false;
 screen* stdscr;
 
 void usevscr()
