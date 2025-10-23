@@ -30,21 +30,21 @@ enum cptype get_cptype(char8_t c)
 	return INVALID;
 }
 
-long count_graphemes(const char* restrict str, size_t strlen)
+long gphm_cnt(const char* restrict str, size_t strlen)
 {
-	ulong count = 0;
+	ulong cnt = 0;
 
 	enum cptype type = INVALID;
-	for (size_t i = 0; i < strlen; i += type, ++count) {
+	for (size_t i = 0; i < strlen; i += type, ++cnt) {
 		if ((type = get_cptype(str[i])) == INVALID) {
 			return -1;
 		}
 	}
 
-	return count;
+	return cnt;
 }
 
-long get_invalid_cp(const char* restrict str, size_t strlen)
+long get_inv_cp(const char* restrict str, size_t strlen)
 {
 	for (size_t i = 0; i < strlen; ++i) {
 		if (get_cptype(str[i]) == INVALID) {
@@ -53,5 +53,19 @@ long get_invalid_cp(const char* restrict str, size_t strlen)
 	}
 
 	return -1;
+}
+
+char32_t gphmtoc32(const char* first_cp)
+{
+	const enum cptype cp_cnt = get_cptype(*first_cp);
+	if (cp_cnt <= CONTINUATION) {
+		return -1U;
+	}
+	char32_t c32 = 0;
+	for (uchar i = 0; i < cp_cnt; ++i) {
+		c32 |= first_cp[i] << (i * 8);
+	}
+
+	return c32;
 }
 

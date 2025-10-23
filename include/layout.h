@@ -2,30 +2,26 @@
 
 #include <stdint.h>
 
+#include "escdef.h"
 #include "screen.h"
 
-#define MIN(x, y)          (x < y ? x : y)
-#define MAX(x, y)          (x > y ? x : y)
-#define CLAMP(x, min, max) (x < min ? min : x > max ? max : x)
-
-
-enum h_offpref : char {
+enum ENUMTYPE(h_offpref, char) {
 	PREF_LEFT  = -1,
 	PREF_RIGHT = 1,
 };
-enum v_offpref : char {
+enum ENUMTYPE(v_offpref, char) {
 	PREF_TOP    = -1,
 	PREF_BOTTOM = 1,
 };
 
 /* h_coordsems and v_coordsems MUST NOT overlap. */
-enum h_coordsems : unsigned char {
+enum ENUMTYPE(h_coordsems, unsigned char) {
 	LEFT     = 0x1,
 	RIGHT    = 0x2,
 	H_MIDDLE = 0x4,
 };
 
-enum v_coordsems : unsigned char {
+enum ENUMTYPE(v_coordsems, unsigned char) {
 	TOP      = 0x8,
 	BOTTOM   = 0x10,
 	V_MIDDLE = 0x20,

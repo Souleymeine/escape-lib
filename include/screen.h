@@ -19,14 +19,33 @@ union termclr {
 	uint8_t id;
 };
 
-enum cellflags : unsigned char {
-	VISIBLE     = 0x1,
-	BG_CLR_CODE = 0x2,
-	FG_CLR_CODE = 0x4,
-	BG_CLR_RGB  = 0x8,
-	FG_CLR_RGB  = 0x10,
-	BG_CLR_ID   = 0x20,
-	FG_CLR_ID   = 0x40,
+enum ENUMTYPE(cellflags, unsigned char) {
+	CELL_VISIBLE    = 0x1,
+	CELL_BG_CLRCODE = 0x2,
+	CELL_FG_CLRCODE = 0x4,
+	CELL_BG_CLRRGB  = 0x8,
+	CELL_FG_CLRRGB  = 0x10,
+	CELL_BG_CLRID   = 0x20,
+	CELL_FG_CLRID   = 0x40,
+};
+
+enum ENUMTYPE(cordbounderrs, unsigned char) {
+	COORD_X_IN  = 0x1,
+	COORD_Y_IN  = 0x2,
+	COORD_X_OUT = 0x4,
+	COORD_Y_OUT = 0x8,
+};
+
+enum ENUMTYPE(termclrcode, unsigned char) {
+	BLACK,
+	RED,
+	GREEN,
+	YELLOW,
+	BLUE,
+	MAGENTA,
+	CYAN,
+	WHITE,
+	DEF_CLRCODE,
 };
 
 /**
@@ -50,7 +69,7 @@ enum cellflags : unsigned char {
  */
 struct scrbuf {
 	// properties
-	flags termflags;
+	termstateflag termflags;
 	union termclr bg_clr;
 	union termclr fg_clr;
 
@@ -62,59 +81,54 @@ struct scrbuf {
 };
 
 struct _scr_arena {
-	size_t _pagesize;          // Avoids us from having to compute the page size again when de-allocating the arena
-	struct termsize _termsize; // Same
+	size_t _pagesize;      // Avoids us from having to compute the page size again when de-allocating the arena
+	struct termsize _size; // Same
 	struct scrbuf* _pbuf;
 	struct scrbuf* _vbuf;
 };
 
 typedef struct _scr_arena screen;
 
+
+/** Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
+ * scrflags holds the same flags as termflags with some additional flags for screens exclusively. */
+screen* newscr(union termclr bg_clr, union termclr fg_clr, termstateflag scrflags);
+/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
+bool freescr(screen* scr);
+
 /** Returns a pointer to the physical buffer of the given screen. */
-static inline struct scrbuf* get_pbuf(screen* scr)
+static inline struct scrbuf* sgetpbuf(const screen* scr)
 {
 	return scr->_pbuf;
 }
-/**
- * Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
- * NULL/nullptr otherwise.
- */
-static inline struct scrbuf* get_vbuf(screen* scr)
+/** Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
+ * NULL/nullptr otherwise. */
+static inline struct scrbuf* sgetvbuf(const screen* scr)
 {
 	return scr->_vbuf;
 }
-
-enum clrcode : unsigned char {
-	BLACK,
-	RED,
-	GREEN,
-	YELLOW,
-	BLUE,
-	MAGENTA,
-	CYAN,
-	WHITE,
-	DEFAULT_CLRCODE,
-};
-
-#define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
-#define DEF_SCR_FGCLR ((union termclr){.code = DEFAULT_CLRCODE})
+/** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
+ * Use scoorderr(x, y) to get more details. */
+long scordtoidx(const screen* scr, coord x, coord y);
+/** Returns flags of cordbounderrs given x and y. */
+errflcord scorderr(const screen* scr, coord x, coord y);
+/** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
+ * Returns flags of cordbounderrs given x and y. */
+errflcord ssetc32(screen* restrict scr, char32_t c32, coord x, coord y);
+/** Sets the given color at (x, y) */
+errflcord ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, coord x, coord y);
 
 extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-/**
- * Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
- * scrflags holds the same flags as termflags with some additional flags for screens exclusively.
- */
-screen* newscr(union termclr bg_clr, union termclr fg_clr, flags scrflags);
-/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
-bool freescr(screen* scr);
-/** Refresh the given screen */
-void srefresh(const screen* scr);
-/** Refresh stdscr */
-static inline void refresh()
-{
-	srefresh(stdscr);
-}
+#define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
+#define DEF_SCR_FGCLR ((union termclr){.code = DEF_CLRCODE})
+
+#define getpbuf(...)   sgetpbuf(stdscr, __VA_ARGS__)
+#define getvbuf(...)   sgetvbuf(stdscr, __VA_ARGS__)
+#define corderr(...)   scorderr(stdscr, __VA_ARGS__)
+#define setc23(...)    ssetc32(stdscr, __VA_ARGS__)
+#define cordtoidx(...) scordtoidx(stdscr, __VA_ARGS__)
+#define setclr(...)    ssetclr(stdscr, __VA_ARGS__)
 

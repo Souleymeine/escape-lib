@@ -14,7 +14,7 @@
 #include "termsize.h"
 
 
-int main(int argc, char** argv)
+int main(int argc [[maybe_unused]], char** argv [[maybe_unused]])
 {
 	init_flags(ALTBUF | HIDE_CURSOR | NO_ECHO);
 
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
 	printf("cols : %hu, rows: %hu\n", size.cols, size.rows);
 
-	const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
+	// const char* label = (argc == 1 ? "Всем привет !" : argv[1]);
 
 #if __unix__
 	getchar();

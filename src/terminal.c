@@ -24,8 +24,8 @@ static DWORD og_stdout_mode;
 static UINT og_output_cp;
 #endif
 
-static bool use_vscr  = false;
-static flags g_flags = 0;
+static bool use_vscr          = false;
+static termstateflag g_flags = 0;
 
 screen* stdscr;
 
@@ -64,7 +64,7 @@ void init_term()
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
-int set_termflags(flags flags)
+int set_termflags(termstateflag flags)
 {
 	if (flags == g_flags) {
 		return -1;
@@ -93,13 +93,13 @@ int set_termflags(flags flags)
 	return 0;
 }
 
-inline void init_flags(flags flags)
+inline void init_flags(termstateflag flags)
 {
 	init_term();
 	set_termflags(flags);
 }
 
-const flags* get_termflags()
+const termstateflag* get_termflags()
 {
 	return &g_flags;
 }

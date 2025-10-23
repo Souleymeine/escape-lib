@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <uchar.h>
+
 #if __unix__
 #include <sys/mman.h>
 #elif _WIN32
@@ -13,8 +14,8 @@
 #include "_escdef.h"
 
 /** Returns a struct with the pointer all pointing to the right addresses based on the given _screenbuf ptr */
-static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr bg_clr, union termclr fg_clr, flags termflags,
-                              size_t char_bufsize, size_t cellflag_bufsize, size_t clr_bufsize)
+static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr bg_clr, union termclr fg_clr,
+                              termstateflag termflags, size_t char_bufsize, size_t cellflag_bufsize, size_t clr_bufsize)
 {
 	scrbuf_ptr->termflags = termflags;
 	scrbuf_ptr->bg_clr    = bg_clr;
@@ -26,7 +27,7 @@ static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr 
 	scrbuf_ptr->fg_clrs   = (union termclr*)(scrbuf_ptr->bg_clrs + clr_bufsize);
 }
 
-screen* newscr(union termclr bg_clr, union termclr fg_clr, flags scrflags)
+screen* newscr(union termclr bg_clr, union termclr fg_clr, termstateflag scrflags)
 {
 	const struct termsize termsize = get_termsize();
 	const size_t cell_cnt          = termsize.cols * termsize.rows;
@@ -63,11 +64,11 @@ screen* newscr(union termclr bg_clr, union termclr fg_clr, flags scrflags)
 	const byte* pbufptr          = (byte*)arena_ptr + sizeof(scr_arena);
 
 	scr_arena->_pagesize = pagesize;
-	scr_arena->_termsize = termsize;
+	scr_arena->_size     = termsize;
 	scr_arena->_pbuf     = (struct scrbuf*)pbufptr;
 	scr_arena->_vbuf     = use_vscr ? (struct scrbuf*)(pbufptr + tot_scr_size) : nullptr;
 
-	const flags termflags = (scrflags & HOLD_TERMFLAGS) ? (scrflags & ~(HOLD_TERMFLAGS | USE_VSCR)) : -1;
+	const termstateflag termflags = (scrflags & HOLD_TERMFLAGS) ? (scrflags & ~(HOLD_TERMFLAGS | USE_VSCR)) : -1;
 	initscrbuf(scr_arena->_pbuf, bg_clr, fg_clr, termflags, char_bufsize, cellflag_bufsize, clr_bufsize);
 	if (use_vscr) {
 		initscrbuf(scr_arena->_vbuf, bg_clr, fg_clr, termflags, char_bufsize, cellflag_bufsize, clr_bufsize);
@@ -93,6 +94,51 @@ inline bool freescr(screen* scr)
 #endif
 
 	scr = nullptr;
+	return 0;
+}
+
+uchar scorderr(const screen* scr, coord x, coord y)
+{
+	unsigned char flags = 0;
+	if (x > scr->_size.cols) flags |= COORD_X_OUT;
+	else flags |= COORD_X_IN;
+	if (y > scr->_size.rows) flags |= COORD_Y_OUT;
+	else flags |= COORD_Y_IN;
+
+	return flags;
+}
+
+long scordtoidx(const screen* scr, coord x, coord y)
+{
+	if (scorderr(scr, x, y)) {
+		return -1;
+	}
+	return (y - 1) * scr->_size.cols + (x - 1); // -1 since the first cell is (1, 1), not (0, 0)
+}
+
+errflcord ssetc32(screen* restrict scr, char32_t c32, coord x, coord y)
+{
+	const uchar err = scorderr(scr, x, y);
+	if (err) {
+		return err;
+	}
+	scr->_pbuf->chars[scordtoidx(scr, x, y)] = c32;
+	return 0;
+}
+
+errflcord ssetclr(screen* restrict scr, union termclr clr, uchar clrflags, coord x, coord y)
+{
+	const uchar idx = scordtoidx(scr, x, y);
+	if (idx) {
+		return idx;
+	}
+
+	scr->_pbuf->cellflags[idx] |= clrflags | CELL_VISIBLE;
+	// points to the correct array element depending on the given flags
+	union termclr* cell
+		= clrflags & (CELL_BG_CLRCODE | CELL_BG_CLRID | CELL_BG_CLRRGB) ? &scr->_pbuf->bg_clrs[idx] : &scr->_pbuf->fg_clrs[idx];
+	*cell = clr;
+
 	return 0;
 }
 

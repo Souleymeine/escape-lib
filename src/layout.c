@@ -41,6 +41,6 @@ void ref_topleft(const struct anchor* anc, enum h_offpref h_off, enum v_offpref 
 
 void clampcords(const screen* scr, coord* restrict x, coord* restrict y)
 {
-	*x = CLAMP(*x, 1, scr->_termsize.cols);
-	*x = CLAMP(*y, 1, scr->_termsize.rows);
+	*x = CLAMP(*x, 1, scr->_size.cols);
+	*x = CLAMP(*y, 1, scr->_size.rows);
 }

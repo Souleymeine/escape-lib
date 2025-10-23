@@ -62,7 +62,6 @@ InsertTrailingCommas: None
 # Hopefully C will support this when c23 will become the default (never)
 IntegerLiteralSeparator:
   Binary: 8
-  Decimal: 3
   Hex: -1
 
 KeepEmptyLines:
