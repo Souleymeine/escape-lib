@@ -25,7 +25,7 @@ static UINT og_output_cp;
 #endif
 
 static bool use_vscr  = false;
-static FLAG_T g_flags = 0;
+static flags g_flags = 0;
 
 screen* stdscr;
 
@@ -64,7 +64,7 @@ void init_term()
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
-int set_termflags(FLAG_T flags)
+int set_termflags(flags flags)
 {
 	if (flags == g_flags) {
 		return -1;
@@ -93,13 +93,13 @@ int set_termflags(FLAG_T flags)
 	return 0;
 }
 
-inline void init_flags(FLAG_T flags)
+inline void init_flags(flags flags)
 {
 	init_term();
 	set_termflags(flags);
 }
 
-const FLAG_T* get_termflags()
+const flags* get_termflags()
 {
 	return &g_flags;
 }

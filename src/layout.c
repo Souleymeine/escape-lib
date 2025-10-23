@@ -1,6 +1,5 @@
 #include "layout.h"
 
-#include "macros.h"
 #include "screen.h"
 
 #include "_escdef.h"

@@ -6,14 +6,14 @@
 #include <memoryapi.h>
 #endif
 
-#include "flags.h"
+#include "escdef.h"
 #include "screen.h"
 #include "termsize.h"
 
 #include "_escdef.h"
 
 /** Returns a struct with the pointer all pointing to the right addresses based on the given _screenbuf ptr */
-static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr bg_clr, union termclr fg_clr, FLAG_T termflags,
+static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr bg_clr, union termclr fg_clr, flags termflags,
                               size_t char_bufsize, size_t cellflag_bufsize, size_t clr_bufsize)
 {
 	scrbuf_ptr->termflags = termflags;
@@ -26,13 +26,13 @@ static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr 
 	scrbuf_ptr->fg_clrs   = (union termclr*)(scrbuf_ptr->bg_clrs + clr_bufsize);
 }
 
-screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags)
+screen* newscr(union termclr bg_clr, union termclr fg_clr, flags scrflags)
 {
 	const struct termsize termsize = get_termsize();
-	const size_t cell_count        = termsize.cols * termsize.rows;
-	const size_t char_bufsize      = cell_count * sizeof(char32_t);
-	const size_t clr_bufsize       = cell_count * sizeof(union termclr);
-	const size_t cellflag_bufsize  = cell_count * sizeof(uchar);
+	const size_t cell_cnt          = termsize.cols * termsize.rows;
+	const size_t char_bufsize      = cell_cnt * sizeof(char32_t);
+	const size_t clr_bufsize       = cell_cnt * sizeof(union termclr);
+	const size_t cellflag_bufsize  = cell_cnt * sizeof(uchar);
 	// size of struct scrbuf + the size of its buffers
 	const size_t tot_scr_size = sizeof(struct scrbuf) + (2 * clr_bufsize + char_bufsize + cellflag_bufsize);
 
@@ -60,15 +60,14 @@ screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags)
 
 	// We cast arena_ptr to byte* because sizeof returns a size in bytes. If you don't understand review your pointer arithmetics.
 	struct _scr_arena* scr_arena = (struct _scr_arena*)arena_ptr;
-	const byte* firstbuf_start   = (byte*)arena_ptr + sizeof(scr_arena);
+	const byte* pbufptr          = (byte*)arena_ptr + sizeof(scr_arena);
 
 	scr_arena->_pagesize = pagesize;
 	scr_arena->_termsize = termsize;
-	scr_arena->_pbuf     = (struct scrbuf*)firstbuf_start;
-	scr_arena->_vbuf     = use_vscr ? (struct scrbuf*)(firstbuf_start + tot_scr_size) : nullptr;
+	scr_arena->_pbuf     = (struct scrbuf*)pbufptr;
+	scr_arena->_vbuf     = use_vscr ? (struct scrbuf*)(pbufptr + tot_scr_size) : nullptr;
 
-	const FLAG_T termflags = (scrflags & HOLD_TERMFLAGS) ? (scrflags & ~(HOLD_TERMFLAGS | USE_VSCR)) : -1;
-
+	const flags termflags = (scrflags & HOLD_TERMFLAGS) ? (scrflags & ~(HOLD_TERMFLAGS | USE_VSCR)) : -1;
 	initscrbuf(scr_arena->_pbuf, bg_clr, fg_clr, termflags, char_bufsize, cellflag_bufsize, clr_bufsize);
 	if (use_vscr) {
 		initscrbuf(scr_arena->_vbuf, bg_clr, fg_clr, termflags, char_bufsize, cellflag_bufsize, clr_bufsize);
@@ -96,6 +95,4 @@ inline bool freescr(screen* scr)
 	scr = nullptr;
 	return 0;
 }
-
-void srefresh(const screen* scr) {}
 

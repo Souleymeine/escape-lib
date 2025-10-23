@@ -4,21 +4,8 @@
 #include <stdint.h>
 #include <uchar.h>
 
-#include "flags.h"
+#include "escdef.h"
 #include "termsize.h"
-
-
-/*
- * 8 bits is too small, 16 is too big, so 16 bits is enough.
- * 16 bits is ENOUGH.
- * I genuinely do not beleive that you have 65536p monitor with your terminal so zoomed out each cell is one pixel wide.
- * If you do however, call me.
- */
-
-/**
- * Represents a coordinates/length in the terminal, or anyting related to coordinates/cells
- */
-typedef uint16_t coord;
 
 struct rgb {
 	uint8_t r;
@@ -63,7 +50,7 @@ enum cellflags : unsigned char {
  */
 struct scrbuf {
 	// properties
-	FLAG_T termflags;
+	flags termflags;
 	union termclr bg_clr;
 	union termclr fg_clr;
 
@@ -97,7 +84,18 @@ static inline struct scrbuf* get_vbuf(screen* scr)
 	return scr->_vbuf;
 }
 
-#include "style.h"
+enum clrcode : unsigned char {
+	BLACK,
+	RED,
+	GREEN,
+	YELLOW,
+	BLUE,
+	MAGENTA,
+	CYAN,
+	WHITE,
+	DEFAULT_CLRCODE,
+};
+
 #define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
 #define DEF_SCR_FGCLR ((union termclr){.code = DEFAULT_CLRCODE})
 
@@ -109,7 +107,7 @@ extern screen* stdscr;
  * Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
  * scrflags holds the same flags as termflags with some additional flags for screens exclusively.
  */
-screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags);
+screen* newscr(union termclr bg_clr, union termclr fg_clr, flags scrflags);
 /** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
 bool freescr(screen* scr);
 /** Refresh the given screen */
