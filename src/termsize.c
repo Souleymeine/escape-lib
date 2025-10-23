@@ -12,17 +12,12 @@
 #if _WIN32
 static inline RECT get_conwin_rect()
 {
-	HWND conwin_hndl = GetConsoleWindow();
-	/* Newest Terminal only envvars
-	 * true if the program is running inside Microsoft's newer "Terminal" terminal
-	 * emulator */
-	if (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr) {
-		conwin_hndl = GetWindow(conwin_hndl, GW_OWNER);
-	}
-
 	RECT conwin_rect;
-	GetWindowRect(conwin_hndl, &conwin_rect);
+	// Newest Terminal only envvars. true if the program is running inside Microsoft's newer "Terminal" terminal emulator.
+	HWND conwin_hndl = (getenv("WT_SESSION") != nullptr || getenv("WT_PROFILE_ID") != nullptr) ? GetWindow(conwin_hndl, GW_OWNER)
+	                                                                                           : GetConsoleWindow();
 
+	GetWindowRect(conwin_hndl, &conwin_rect);
 	return conwin_rect;
 }
 #endif
@@ -53,14 +48,14 @@ void ref_termsize(struct termsize* ref)
 #endif
 }
 
-struct ro_termsize get_termsize()
+struct termsize get_termsize()
 {
 #if __unix__
 
 	struct winsize termsize;
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &termsize);
 
-	return (struct ro_termsize){
+	return (struct termsize){
 		.rows = termsize.ws_row,
 		.cols = termsize.ws_col,
 		.xpix = termsize.ws_xpixel,
@@ -73,7 +68,7 @@ struct ro_termsize get_termsize()
 	GetConsoleScreenBufferInfo(*get_g_stdout_hndl(), &scrbuf_info);
 	RECT conwin_rect = get_conwin_rect();
 
-	return (struct ro_termsize){
+	return (struct termsize){
 		.rows = scrbuf_info.dwSize.Y,
 		.cols = scrbuf_info.dwSize.X,
 		.xpix = conwin_rect.right - conwin_rect.left,

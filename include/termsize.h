@@ -1,14 +1,13 @@
 #pragma once
 
 struct termsize {
-	unsigned int cols, rows, xpix, ypix;
-};
-
-struct ro_termsize {
-	const unsigned int cols, rows, xpix, ypix;
+	unsigned int cols;
+	unsigned int rows;
+	unsigned int xpix;
+	unsigned int ypix;
 };
 
 void ref_termsize(struct termsize* ref);
 
-struct ro_termsize get_termsize();
+struct termsize get_termsize();
 

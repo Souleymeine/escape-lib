@@ -1,0 +1,134 @@
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <uchar.h>
+
+#include "escdef.h"
+#include "termsize.h"
+
+struct rgb {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+};
+
+union termclr {
+	unsigned char code;
+	struct rgb rgb;
+	uint8_t id;
+};
+
+enum ENUMTYPE(cellflags, unsigned char) {
+	CELL_VISIBLE    = 0x1,
+	CELL_BG_CLRCODE = 0x2,
+	CELL_FG_CLRCODE = 0x4,
+	CELL_BG_CLRRGB  = 0x8,
+	CELL_FG_CLRRGB  = 0x10,
+	CELL_BG_CLRID   = 0x20,
+	CELL_FG_CLRID   = 0x40,
+};
+
+enum ENUMTYPE(cordbounderrs, unsigned char) {
+	COORD_X_IN  = 0x1,
+	COORD_Y_IN  = 0x2,
+	COORD_X_OUT = 0x4,
+	COORD_Y_OUT = 0x8,
+};
+
+enum ENUMTYPE(termclrcode, unsigned char) {
+	BLACK,
+	RED,
+	GREEN,
+	YELLOW,
+	BLUE,
+	MAGENTA,
+	CYAN,
+	WHITE,
+	DEF_CLRCODE,
+};
+
+/**
+ * Conceptually, a "screen buffer" represents the current/desired visual state of a terminal. Do not mix it up with a window.
+ * Windows are composite by nature, screens are not and are fully opaque, plain, like a canvas. It may also hold terminal flags if
+ * you want to. Explanation for the choice of types:
+ * - `chars` uses 32 bit wide characters because it is the largest size for a UTF-8 grapheme (so you could say UTF-32).
+ *   Using 32 bits is a sacrifice we have to make to be able to address any "visible" character (grapheme) based
+ *   on an index/coordinates on our terminal's grid. The additional unused space is only wasteful in memory,
+ *   the screen will get translated to be written to stdout anyway + it has the VITAL advantage of not requiring us
+ *   to dynamically reallocate the buffer when it's full, because it cannot be full until every cell contains a grapheme.
+ * - `bg_clrs` and `fg_clrs` use arrays of unions which represent a general "color" (clr). It is very practical, since a color
+ *   could be anything between an rgb struct (three 8 bit unsigned integers) or a single character/uint8 depending on the format.
+ *   The union thus allows us to allocate enough memory for those 3 formats by being wide enough for the biggest (rgb) and access
+ *   colors in a single array with whatever data type we want.
+ * NOTE : The size of `chars`, `bg_clrs` and `fg_clrs` must always be the number of cells in the current terminal.
+ *
+ * Have fun
+ *
+ *		Souleymeine
+ */
+struct scrbuf {
+	// properties
+	termstateflag termflags;
+	union termclr bg_clr;
+	union termclr fg_clr;
+
+	// cell buffers
+	char32_t* chars;
+	unsigned char* cellflags;
+	union termclr* bg_clrs;
+	union termclr* fg_clrs;
+};
+
+struct _scr_arena {
+	size_t _pagesize;      // Avoids us from having to compute the page size again when de-allocating the arena
+	struct termsize _size; // Same
+	struct scrbuf* _pbuf;
+	struct scrbuf* _vbuf;
+};
+
+typedef struct _scr_arena screen;
+
+
+/** Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
+ * scrflags holds the same flags as termflags with some additional flags for screens exclusively. */
+screen* newscr(union termclr bg_clr, union termclr fg_clr, termstateflag scrflags);
+/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
+bool freescr(screen* scr);
+
+/** Returns a pointer to the physical buffer of the given screen. */
+static inline struct scrbuf* sgetpbuf(const screen* scr)
+{
+	return scr->_pbuf;
+}
+/** Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
+ * NULL/nullptr otherwise. */
+static inline struct scrbuf* sgetvbuf(const screen* scr)
+{
+	return scr->_vbuf;
+}
+/** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
+ * Use scoorderr(x, y) to get more details. */
+long scordtoidx(const screen* scr, coord x, coord y);
+/** Returns flags of cordbounderrs given x and y. */
+errflcord scorderr(const screen* scr, coord x, coord y);
+/** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
+ * Returns flags of cordbounderrs given x and y. */
+errflcord ssetc32(screen* restrict scr, char32_t c32, coord x, coord y);
+/** Sets the given color at (x, y) */
+errflcord ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, coord x, coord y);
+
+extern screen* stdscr;
+// IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
+#define stdscr stdscr
+
+#define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
+#define DEF_SCR_FGCLR ((union termclr){.code = DEF_CLRCODE})
+
+#define getpbuf(...)   sgetpbuf(stdscr, __VA_ARGS__)
+#define getvbuf(...)   sgetvbuf(stdscr, __VA_ARGS__)
+#define corderr(...)   scorderr(stdscr, __VA_ARGS__)
+#define setc23(...)    ssetc32(stdscr, __VA_ARGS__)
+#define cordtoidx(...) scordtoidx(stdscr, __VA_ARGS__)
+#define setclr(...)    ssetclr(stdscr, __VA_ARGS__)
+
