@@ -1,21 +1,19 @@
 #include <stddef.h>
 #include <uchar.h>
-
-#include "flags.h"
-
 #if __unix__
 #include <sys/mman.h>
 #elif _WIN32
 #include <memoryapi.h>
 #endif
 
+#include "flags.h"
 #include "screen.h"
 #include "termsize.h"
 
 #include "_escdef.h"
 
 /** Returns a struct with the pointer all pointing to the right addresses based on the given _screenbuf ptr */
-static inline void initscrbuf(struct scrbuf* scrbuf_ptr, union termclr bg_clr, union termclr fg_clr, FLAG_T termflags,
+static inline void initscrbuf(struct scrbuf* restrict scrbuf_ptr, union termclr bg_clr, union termclr fg_clr, FLAG_T termflags,
                               size_t char_bufsize, size_t cellflag_bufsize, size_t clr_bufsize)
 {
 	scrbuf_ptr->termflags = termflags;
@@ -28,14 +26,13 @@ static inline void initscrbuf(struct scrbuf* scrbuf_ptr, union termclr bg_clr, u
 	scrbuf_ptr->fg_clrs   = (union termclr*)(scrbuf_ptr->bg_clrs + clr_bufsize);
 }
 
-
 screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags)
 {
-	const struct termsize size    = get_termsize();
-	const size_t cell_count       = size.cols * size.rows;
-	const size_t char_bufsize     = cell_count * sizeof(char32_t);
-	const size_t clr_bufsize      = cell_count * sizeof(union termclr);
-	const size_t cellflag_bufsize = cell_count * sizeof(uchar);
+	const struct termsize termsize = get_termsize();
+	const size_t cell_count        = termsize.cols * termsize.rows;
+	const size_t char_bufsize      = cell_count * sizeof(char32_t);
+	const size_t clr_bufsize       = cell_count * sizeof(union termclr);
+	const size_t cellflag_bufsize  = cell_count * sizeof(uchar);
 	// size of struct scrbuf + the size of its buffers
 	const size_t tot_scr_size = sizeof(struct scrbuf) + (2 * clr_bufsize + char_bufsize + cellflag_bufsize);
 
@@ -54,8 +51,8 @@ screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags)
 #elif _WIN32
 
 	// VirtualAlloc initializes page with 0s, which is desired
-	const LPVOID arena_ptr = VirtualAlloc(nullptr, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	if (arena_ptr == nullptr) {
+	const LPVOID arena_ptr = VirtualAlloc(nullptr, pagesize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (!arena_ptr) {
 		return nullptr;
 	}
 
@@ -66,6 +63,7 @@ screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags)
 	const byte* firstbuf_start   = (byte*)arena_ptr + sizeof(scr_arena);
 
 	scr_arena->_pagesize = pagesize;
+	scr_arena->_termsize = termsize;
 	scr_arena->_pbuf     = (struct scrbuf*)firstbuf_start;
 	scr_arena->_vbuf     = use_vscr ? (struct scrbuf*)(firstbuf_start + tot_scr_size) : nullptr;
 
@@ -95,6 +93,9 @@ inline bool freescr(screen* scr)
 
 #endif
 
+	scr = nullptr;
 	return 0;
 }
+
+void srefresh(const screen* scr) {}
 

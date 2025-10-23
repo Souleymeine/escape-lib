@@ -5,6 +5,7 @@
 
 #include "flags.h"
 #include "screen.h"
+#include "termsize.h"
 
 static void test_scr(screen* scr, const char* msg)
 {
@@ -24,7 +25,8 @@ static void test_scr(screen* scr, const char* msg)
 
 int main()
 {
-	printf("\n-------------------- test --------------------\n");
+	const struct termsize size = get_termsize();
+	printf("\n-------------------- test --------------------\nsize : %d x %d\n", size.cols, size.rows);
 	newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, USE_VSCR);
 	screen* no_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, 0);
 	test_scr(no_vscr, "screen without virtual screen");

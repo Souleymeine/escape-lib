@@ -5,6 +5,20 @@
 #include <uchar.h>
 
 #include "flags.h"
+#include "termsize.h"
+
+
+/*
+ * 8 bits is too small, 16 is too big, so 16 bits is enough.
+ * 16 bits is ENOUGH.
+ * I genuinely do not beleive that you have 65536p monitor with your terminal so zoomed out each cell is one pixel wide.
+ * If you do however, call me.
+ */
+
+/**
+ * Represents a coordinates/length in the terminal, or anyting related to coordinates/cells
+ */
+typedef uint16_t coord;
 
 struct rgb {
 	uint8_t r;
@@ -61,7 +75,8 @@ struct scrbuf {
 };
 
 struct _scr_arena {
-	size_t _pagesize; // Avoids us from having to compute the page size again when de-allocating the arena
+	size_t _pagesize;          // Avoids us from having to compute the page size again when de-allocating the arena
+	struct termsize _termsize; // Same
 	struct scrbuf* _pbuf;
 	struct scrbuf* _vbuf;
 };
@@ -95,10 +110,10 @@ extern screen* stdscr;
  * scrflags holds the same flags as termflags with some additional flags for screens exclusively.
  */
 screen* newscr(union termclr bg_clr, union termclr fg_clr, FLAG_T scrflags);
-/** De-allocate the given screen. Returns false (0) if successful, true (1) otherwise */
+/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
 bool freescr(screen* scr);
 /** Refresh the given screen */
-void srefresh(screen* scr);
+void srefresh(const screen* scr);
 /** Refresh stdscr */
 static inline void refresh()
 {
