@@ -37,12 +37,20 @@ void cool_test()
 In the next branches.
 (Of course the latter is horrible but you get the point).
 
+## Some naming conventions :
+**cp** stands for **c**ode**p**oint
+**gphm** stands for **g**ra**ph**e**m**e
+
+Those two are ferequent in the library.
+They respectively refer to the smallest bit of information in a utf8 string (codepoint) and a group of multiple codepoints that make visual character up (grapheme)
+
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
 - [ ] Use zig as a build system rather than make (painful, painful indeed after so many hours writing a Makefile, but necessary).
     See https://youtu.be/i9nFvSpcCzo?si=yxOfo1hWYExjidIT.
     "Replacing your dependency on make by zig, and now this new dependency also cross compiles", **marvelous**.
+- [ ] Binding for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal)
 - [ ] Limit the usage of the standard library to bit utilities (stdbit.h) and system calls (no C runtime, like malloc, printf, fopen, ...)
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics

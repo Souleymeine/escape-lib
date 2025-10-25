@@ -15,28 +15,29 @@ enum ENUMTYPE(v_offpref, char) {
 };
 
 /* h_coordsems and v_coordsems MUST NOT overlap. */
-enum ENUMTYPE(h_coordsems, unsigned char) {
+enum ENUMTYPE(h_cordsems, unsigned char) {
 	LEFT     = 0x1,
 	RIGHT    = 0x2,
 	H_MIDDLE = 0x4,
 };
 
-enum ENUMTYPE(v_coordsems, unsigned char) {
+enum ENUMTYPE(v_cordsems, unsigned char) {
 	TOP      = 0x8,
 	BOTTOM   = 0x10,
 	V_MIDDLE = 0x20,
 };
 
 struct anchor {
-	coord x;
-	coord y;
-	coord width;
-	coord height;
-	enum h_coordsems h_coordsem;
-	enum v_coordsems v_coordsem;
+	uint16_t x;
+	uint16_t y;
+	uint16_t width;
+	uint16_t height;
+	enum h_cordsems h_coordsem;
+	enum v_cordsems v_coordsem;
 };
 
-void ref_topleft(const struct anchor* anc, enum h_offpref h_off, enum v_offpref v_off, coord* restrict x, coord* restrict y);
+void ref_topleft(const struct anchor* anc, enum h_offpref h_off, enum v_offpref v_off, uint16_t* restrict x,
+                 uint16_t* restrict y);
 
-void clampcords(const screen* scr, coord* restrict x, coord* restrict y);
+void clampcords(const screen* scr, uint16_t* restrict x, uint16_t* restrict y);
 

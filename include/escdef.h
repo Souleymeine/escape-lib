@@ -18,19 +18,20 @@
 #endif
 
 /*
+ * To represent coordinates/length in a terminal,
  * 8 bits is too small, 16 is too big, so 16 bits is enough.
  * 16 bits is ENOUGH.
  * I genuinely do not beleive that you have 65536p monitor with your terminal so zoomed out each cell is one pixel wide.
  * If you do however, call me.
+ * Therefore, the library will handle anything pixel/cell related (coordinates, lengths) with uint16_t.
  */
 
-/** Represents a coordinates/length in the terminal, or anyting related to coordinates/cells. */
-typedef uint16_t coord;
-typedef unsigned int termstateflag;
+/** holds bitflags if positive, doesn't if negative */
+typedef int termstatefl;
 /** Type representing a value containg flags relative to coordinate-releated errors with enum cordbounderrs. */
 typedef unsigned char errflcord;
 
-enum ENUMTYPE(termflags, termstateflag) {
+enum ENUMTYPE(termflags, termstatefl) {
 	ALTBUF      = 0x1,
 	HIDE_CURSOR = 0x2,
 	NO_ECHO     = 0x4,
@@ -42,7 +43,7 @@ enum ENUMTYPE(termflags, termstateflag) {
 // to be bigger than at least the biggest (last) flag of `enum termflags`
 
 /* Extends `enum termflags` */
-enum ENUMTYPE(scrflags, termstateflag) {
+enum ENUMTYPE(scrflags, termstatefl) {
 	HOLD_TERMFLAGS = 0x8,
 	USE_VSCR       = 0x10,
 };

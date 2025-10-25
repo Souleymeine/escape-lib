@@ -1,4 +1,3 @@
-#include "screen.h"
 #if _WIN32
 #include <windows.h>
 #elif __unix__
@@ -7,56 +6,52 @@
 #endif
 #include <stdio.h>
 
+#include "screen.h"
 #include "terminal.h"
 
 // Control Sequence Introducer
 #define CSI "\x1b["
 
-/* --- Global library state --- */
 #if __unix__
-static struct termios g_termattr;
+static struct termios s_termattr;
 #elif _WIN32
 static HANDLE stdin_hndl;
 static HANDLE stdout_hndl;
-static DWORD g_stdin_mode;
-static DWORD og_stdin_mode;
-static DWORD og_stdout_mode;
-static UINT og_output_cp;
+static DWORD s_stdin_mode;
+static DWORD s_og_stdin_mode;
+static DWORD s_og_stdout_mode;
+static UINT s_og_output_cp;
 #endif
 
-static termstateflag g_flags = 0;
+static termstatefl s_flags    = 0;
+static bool S_STDSCR_USE_VSCR = false;
 
-static bool use_vscr = false;
 screen* stdscr;
 
 void usevscr()
 {
-	use_vscr = true;
+	S_STDSCR_USE_VSCR = true;
 }
 
 void init_term()
 {
-	stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, use_vscr);
+	stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, S_STDSCR_USE_VSCR);
 
 #if __unix__
-
-	tcgetattr(STDIN_FILENO, &g_termattr);
-
+	tcgetattr(STDIN_FILENO, &s_termattr);
 #elif _WIN32
+	stdin_hndl  = GetStdHandle(STD_INPUT_HANDLE);
+	stdout_hndl = GetStdHandle(STD_OUTPUT_HANDLE);
+	GetConsoleMode(stdin_hndl, &s_og_stdin_mode);
+	GetConsoleMode(stdout_hndl, &s_og_stdout_mode);
 
-	h_stdin  = GetStdHandle(STD_INPUT_HANDLE);
-	h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleMode(h_stdin, &og_stdin_mode);
-	GetConsoleMode(h_stdout, &og_stdout_mode);
+	SetConsoleMode(stdout_hndl, s_og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
-	SetConsoleMode(h_stdout, og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-
-	const DWORD new_in_mode = og_stdin_mode | ENABLE_VIRTUAL_TERMINAL_INPUT;
+	const DWORD new_in_mode = s_og_stdin_mode | ENABLE_VIRTUAL_TERMINAL_INPUT;
 	current_stdin_mode      = new_in_mode;
-	SetConsoleMode(h_stdin, new_in_mode);
+	SetConsoleMode(stdin_hndl, new_in_mode);
 
-	og_output_cp = GetConsoleOutputCP();
-
+	s_og_output_cp = GetConsoleOutputCP();
 #endif
 
 	// TODO : gather termcaps but without termcap/terminfo
@@ -64,55 +59,52 @@ void init_term()
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
-int set_termflags(termstateflag flags)
+int set_termflags(termstatefl flags)
 {
-	if (flags == g_flags) {
+	if (flags == s_flags) {
 		return -1;
 	}
 
 #if __unix__
-
-	g_termattr.c_lflag = (flags & NO_ECHO) ? g_termattr.c_lflag & (~ECHO) : g_termattr.c_lflag | ECHO;
-	tcsetattr(STDIN_FILENO, 0, &g_termattr);
-
+	s_termattr.c_lflag = (flags & NO_ECHO) ? s_termattr.c_lflag & (~ECHO) : s_termattr.c_lflag | ECHO;
+	tcsetattr(STDIN_FILENO, 0, &s_termattr);
 #elif _WIN32
 
 	/* "This mode [`ENABLE_ECHO_INPUT`] can be used only if the ENABLE_LINE_INPUT mode is also enabled."
 	 * - https://learn.microsoft.com/en-us/windows/console/setconsolemode
 	 * TODO : some "side effects" are caused by the combination of those two flags, (presumably
 	 * something that has to do with line buffering) and should be studied with more care. */
-	SetConsoleMode(h_stdin,
+	SetConsoleMode(stdin_hndl,
 	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
-
 #endif
 
 	printf(CSI "?1049%c", flags & ALTBUF ? 'h' : 'l');
 	printf(CSI "?25%c", flags & HIDE_CURSOR ? 'l' : 'h');
 
-	g_flags = flags;
+	s_flags = flags;
 	return 0;
 }
 
-inline void init_flags(termstateflag flags)
+inline void init_flags(termstatefl flags)
 {
 	init_term();
 	set_termflags(flags);
 }
 
-const termstateflag* get_termflags()
+const termstatefl* get_termflags()
 {
-	return &g_flags;
+	return &s_flags;
 }
 
 #if _WIN32
 const HANDLE* get_g_stdin_hndl()
 {
-	return &h_stdin;
+	return &stdin_hndl;
 }
 
 const HANDLE* get_g_stdout_hndl()
 {
-	return &h_stdout;
+	return &stdout_hndl;
 }
 #endif
 
@@ -124,9 +116,9 @@ void cleanup_term()
 
 #if _WIN32
 
-	SetConsoleOutputCP(og_output_cp);
-	SetConsoleMode(h_stdout, og_stdout_mode);
-	SetConsoleMode(h_stdin, og_stdin_mode);
+	SetConsoleOutputCP(s_og_output_cp);
+	SetConsoleMode(stdout_hndl, s_og_stdout_mode);
+	SetConsoleMode(stdin_hndl, s_og_stdin_mode);
 
 #endif
 }

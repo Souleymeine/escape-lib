@@ -66,7 +66,7 @@ fsan := -fsanitize=address,leak,undefined
 endif
 
 BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir)
-OBJ_FLAGS     := -MMD -MP -c
+OBJ_FLAGS     := -MMD -MP -ffreestanding -c
 DEBUG_FLAGS   := -g$(DBG_VERB_LVL) -O0 -DDEBUG $(fsan)
 RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror -DNDEBUG
 # -fuse-ld=ld doesn't work with gcc, so the flag is expanded to -fuse-ld=ld ONLY if CC is gcc and LD is not ld, or if CC is not gcc

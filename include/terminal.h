@@ -13,15 +13,15 @@ void init_term();
 /* Sets the given terminal flags via bitmask.
  * Available flags are available int `enum termflags`.
  * Returns 0 if flags were applied, -1 if it was the same as before. */
-int set_termflags(termstateflag flags);
+int set_termflags(termstatefl flags);
 
 /* Available for convinience reasons :
  * Calls `init_term` then set_termflags.
  * You almost always want to do both during the initializtion of your program. */
-void init_flags(termstateflag flags);
+void init_flags(termstatefl flags);
 
 /* Returns a pointer to the program's static terminal flags. */
-const termstateflag* get_termflags();
+const termstatefl* get_termflags();
 
 /* If called bedore init_term, stdscr will use a virtual screen by default. */
 void usevscr();
