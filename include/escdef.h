@@ -20,11 +20,11 @@
 #define ENUMTYPE(name, type) name
 #endif
 
-#if __STDC_VERSION__ >= 202311L
-#define GPHM(str) (const char8_t*)((const char8_t (*)[4]) u8##str)
-#else
-#define GPHM(str) ((const char (*)[sizeof(str) - 1]) u8##str)
-#endif
+// #if __STDC_VERSION__ >= 202311L
+// #define GPHM(str) (const char8_t*)((const char8_t (*)[4]) u8##str)
+// #else
+// #define GPHM(str) ((const char (*)[sizeof(str) - 1]) u8##str)
+// #endif
 
 /*
  * To represent coordinates/length in a terminal,
