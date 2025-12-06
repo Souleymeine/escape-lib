@@ -35,5 +35,5 @@ long gphm_cnt(const char* restrict str, size_t strlen);
 long get_inv_cp(const char* restrict str, size_t strlen);
 
 /** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme. */
-char32_t gphmtoc32(const char* first_cp);
+char32_t gphmtoc32(const char8_t* first_cp);
 

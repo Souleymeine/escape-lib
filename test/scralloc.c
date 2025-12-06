@@ -17,9 +17,10 @@ static void test_scr(screen* scr, const char* msg)
 	getchar();
 
 	if (freescr(scr)) {
-		fprintf(stderr, "Call to freescr failed, value of errno : %d\n", errno);
+		fprintf(stderr, "Call to freescr failed, value of errno : %d\n\n", errno);
+	} else {
+		printf("Call to freescr succeded!\n\n");
 	}
-	printf("Call to freescr succeded!\n\n");
 }
 
 int main()

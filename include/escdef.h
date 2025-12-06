@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stdint.h>
+#if __STDC_VERSION__ >= 202311L
+#include <uchar.h>
+#endif
 
 // Used frequently when manipulating coordinates
 #define MIN(x, y)          (x < y ? x : y)
@@ -17,6 +20,12 @@
 #define ENUMTYPE(name, type) name
 #endif
 
+#if __STDC_VERSION__ >= 202311L
+#define GPHM(str) (const char8_t*)((const char8_t (*)[4]) u8##str)
+#else
+#define GPHM(str) ((const char (*)[sizeof(str) - 1]) u8##str)
+#endif
+
 /*
  * To represent coordinates/length in a terminal,
  * 8 bits is too small, 16 is too big, so 16 bits is enough.
@@ -28,8 +37,6 @@
 
 /** holds bitflags if positive, doesn't if negative */
 typedef int termstatefl;
-/** Type representing a value containg flags relative to coordinate-releated errors with enum cordbounderrs. */
-typedef unsigned char errflcord;
 
 enum ENUMTYPE(termflags, termstatefl) {
 	ALTBUF      = 0x1,
