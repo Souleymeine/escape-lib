@@ -30,12 +30,6 @@ enum ENUMTYPE(cellflags, unsigned char) {
 	CELL_FG_CLRID   = 0x40,
 };
 
-enum ENUMTYPE(corderr, unsigned char) {
-	COORDS_OK = 0,
-	COORD_X_OUT,
-	COORD_Y_OUT,
-};
-
 enum ENUMTYPE(termclrcode, unsigned char) {
 	BLACK,
 	RED,
@@ -135,12 +129,12 @@ static inline struct scrstr_bufview sgetstrbufview(const screen* scr)
  * Use scorderr(x, y) to get more details. */
 long scordtoidx(const screen* scr, uint16_t x, uint16_t y);
 /** Returns flags of cordbounderrs given x and y. */
-enum corderr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
+enum escerr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
 /** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
  * Returns flags of cordbounderrs given x and y. */
-enum corderr ssetc32(screen* restrict scr, char32_t c32, uint16_t x, uint16_t y);
+enum escerr ssetgphm(screen* restrict scr, const char* gphm, uint16_t x, uint16_t y);
 /** Sets the given color at (x, y) */
-enum corderr ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, uint16_t x, uint16_t y);
+enum escerr ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, uint16_t x, uint16_t y);
 
 extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
@@ -154,7 +148,7 @@ extern screen* stdscr;
 #define getstrbufview() sgetstrbufview(stdscr)
 #define refresh()       srefresh(stdscr)
 #define corderr(...)    scorderr(stdscr, __VA_ARGS__)
-#define setc32(...)     ssetc32(stdscr, __VA_ARGS__)
+#define setgphm(...)    ssetgphm(stdscr, __VA_ARGS__)
 #define cordtoidx(...)  scordtoidx(stdscr, __VA_ARGS__)
 #define setclr(...)     ssetclr(stdscr, __VA_ARGS__)
 

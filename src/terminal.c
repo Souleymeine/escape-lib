@@ -66,7 +66,7 @@ int set_termflags(termstatefl flags)
 	}
 
 #if __unix__
-	s_termattr.c_lflag = (flags & NO_ECHO) ? s_termattr.c_lflag & (~ECHO) : s_termattr.c_lflag | ECHO;
+	s_termattr.c_lflag = (flags & TERM_NO_ECHO) ? s_termattr.c_lflag & (~ECHO) : s_termattr.c_lflag | ECHO;
 	tcsetattr(STDIN_FILENO, 0, &s_termattr);
 #elif _WIN32
 
@@ -78,8 +78,8 @@ int set_termflags(termstatefl flags)
 	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
 
-	printf(CSI "?1049%c", flags & ALTBUF ? 'h' : 'l');
-	printf(CSI "?25%c", flags & HIDE_CURSOR ? 'l' : 'h');
+	printf(CSI "?1049%c", flags & TERM_ALTBUF ? 'h' : 'l');
+	printf(CSI "?25%c", flags & TERM_HIDE_CURSOR ? 'l' : 'h');
 
 	s_flags = flags;
 	return 0;

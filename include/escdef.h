@@ -39,9 +39,9 @@
 typedef int termstatefl;
 
 enum ENUMTYPE(termflags, termstatefl) {
-	ALTBUF      = 0x1,
-	HIDE_CURSOR = 0x2,
-	NO_ECHO     = 0x4,
+	TERM_ALTBUF      = 0x1,
+	TERM_HIDE_CURSOR = 0x2,
+	TERM_NO_ECHO     = 0x4,
 };
 
 /* === scrflags MUST NEVER OVERLAP WITH termflags!!! === */
@@ -51,7 +51,13 @@ enum ENUMTYPE(termflags, termstatefl) {
 
 /* Extends `enum termflags` */
 enum ENUMTYPE(scrflags, termstatefl) {
-	HOLD_TERMFLAGS = 0x8,
-	USE_VSCR       = 0x10,
+	SCREEN_HOLD_TERMFLAGS = 0x8,
+	SCREEN_USE_VIRTUAL    = 0x10,
 };
 
+
+enum ENUMTYPE(escerr, unsigned char) {
+	ESC_OK = 0,
+	ESC_COORD_X_OUT,
+	ESC_COORD_Y_OUT,
+};

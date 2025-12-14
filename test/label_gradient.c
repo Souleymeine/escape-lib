@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 
 #if _WIN32
 #include <conio.h>
@@ -16,7 +15,7 @@
 
 int main(int argc [[maybe_unused]], char** argv [[maybe_unused]])
 {
-	init_flags(ALTBUF | HIDE_CURSOR | NO_ECHO);
+	init_flags(HIDE_CURSOR | NO_ECHO);
 
 	const struct termsize size = get_termsize();
 

@@ -23,7 +23,7 @@ void init_flags(termstatefl flags);
 /* Returns a pointer to the program's static terminal flags. */
 const termstatefl* get_termflags();
 
-/* If called bedore init_term, stdscr will use a virtual screen by default. */
+/* If called bedore `init_term`/`init_flags`, stdscr will use a virtual screen by default. */
 void usevscr();
 
 #if _WIN32
