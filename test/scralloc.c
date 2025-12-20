@@ -27,10 +27,10 @@ int main()
 {
 	const struct termsize size = get_termsize();
 	printf("\n-------------------- test --------------------\nsize : %d x %d\n", size.cols, size.rows);
-	newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, USE_VSCR);
+	newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, SCREEN_USE_VIRTUAL);
 	screen* no_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, 0);
 	test_scr(no_vscr, "screen without virtual screen");
-	screen* with_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, USE_VSCR);
+	screen* with_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, SCREEN_USE_VIRTUAL);
 	test_scr(with_vscr, "screen with virtual screen");
 
 	printf("Creating core dump (if your system is setup correctly), program will now crash.\n");
