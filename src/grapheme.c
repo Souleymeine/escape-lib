@@ -25,7 +25,7 @@ enum cptype get_cptype(char8_t c)
 	} else {
 		const uchar leading_ones = stdc_leading_ones_uc(c);
 		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
-			if (leading_ones == 1) return CP_CONTINUATION; // Continuation bytes *don't* represent a gphm of size 1 (an ASCII char)
+			if (leading_ones == 1) return CP_CONTINUATION; // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			else if (leading_ones <= 4) return (enum cptype)leading_ones;
 		}
 	}

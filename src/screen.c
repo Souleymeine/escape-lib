@@ -209,8 +209,8 @@ bool srefresh(screen* scr)
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (scr->pbuf->cellflags[i] & CELL_VISIBLE) {
 			char mvseq[16];
-			const size_t line      = i / scr->termsize.cols;
-			const size_t col       = i - line * scr->termsize.cols;
+			const size_t line = i / scr->termsize.cols;
+			const size_t col  = i - line * scr->termsize.cols;
 			// TODO : remove calls to stdio
 			const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", line + 1, col + 1);
 			strbufadd(scr->strbuf, mvseq, mvseq_len);
