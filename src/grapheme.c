@@ -79,7 +79,7 @@ size_t c32togphm(char32_t c32, char* restrict gphm)
 	const size_t cp_cnt = c32_bw == 7 ? 1 : c32_bw / UCHAR_WIDTH; // ASCII only has 7 (< 8) bits but counts as 1
 	for (size_t i = 0; i < cp_cnt; ++i) {
 		const char32_t bitmask = 0x000000ff << (i * UCHAR_WIDTH);
-		gphm[cp_cnt - i - 1] = (c32 & bitmask) >> (i * UCHAR_WIDTH);
+		gphm[cp_cnt - i - 1]   = (c32 & bitmask) >> (i * UCHAR_WIDTH);
 	}
 	return cp_cnt;
 }

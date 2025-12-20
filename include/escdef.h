@@ -5,7 +5,7 @@
 #include <uchar.h>
 #endif
 
-#define MAX_GPHM_CPTS 4
+#define MAX_GPHM_CPTS  4
 #define MAX_GPHM_WIDTH UINT32_WIDTH
 
 // Used frequently when manipulating coordinates
