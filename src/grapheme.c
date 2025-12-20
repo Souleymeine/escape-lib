@@ -1,4 +1,6 @@
+#include <limits.h>
 #include <stdbit.h>
+#include <stdio.h>
 #include <uchar.h>
 
 #include "grapheme.h"
@@ -19,24 +21,25 @@ enum cptype get_cptype(char8_t c)
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
 	if (stdc_bit_width_uc(c) < 8u) {
-		return ASCII;
+		return CP_ASCII;
 	} else {
 		const uchar leading_ones = stdc_leading_ones_uc(c);
-		if (leading_ones <= 4u && stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
-			return leading_ones;
+		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
+			if (leading_ones == 1) return CP_CONTINUATION; // Continuation bytes *don't* represent a gphm of size 1 (an ASCII char)
+			else if (leading_ones <= 4) return (enum cptype)leading_ones;
 		}
 	}
 
-	return INVALID;
+	return CP_INVALID;
 }
 
 long gphm_cnt(const char* restrict str, size_t strlen)
 {
 	ulong cnt = 0;
 
-	enum cptype type = INVALID;
+	enum cptype type = CP_INVALID;
 	for (size_t i = 0; i < strlen; i += type, ++cnt) {
-		if ((type = get_cptype(str[i])) == INVALID) {
+		if ((type = get_cptype(str[i])) == CP_INVALID) {
 			return -1;
 		}
 	}
@@ -47,7 +50,7 @@ long gphm_cnt(const char* restrict str, size_t strlen)
 long get_inv_cp(const char* restrict str, size_t strlen)
 {
 	for (size_t i = 0; i < strlen; ++i) {
-		if (get_cptype(str[i]) == INVALID) {
+		if (get_cptype(str[i]) == CP_INVALID) {
 			return i;
 		}
 	}
@@ -58,14 +61,26 @@ long get_inv_cp(const char* restrict str, size_t strlen)
 char32_t gphmtoc32(const char8_t* first_cp)
 {
 	const enum cptype cp_cnt = get_cptype(*first_cp);
-	if (cp_cnt <= CONTINUATION) {
-		return -1U;
+	// TODO : err when string too long
+	if (cp_cnt <= CP_CONTINUATION) {
+		return 0U;
 	}
-	char32_t c32 = 0;
+	char32_t c32 = 0U;
 	for (uchar i = 0; i < cp_cnt; ++i) {
-		c32 |= first_cp[i] << (i * 8);
+		c32 |= first_cp[cp_cnt - i - 1] << (i * UCHAR_WIDTH);
 	}
 
 	return c32;
+}
+
+size_t c32togphm(char32_t c32, char* restrict gphm)
+{
+	const size_t c32_bw = stdc_bit_width(c32);
+	const size_t cp_cnt = c32_bw == 7 ? 1 : c32_bw / UCHAR_WIDTH; // ASCII only has 7 (< 8) bits but counts as 1
+	for (size_t i = 0; i < cp_cnt; ++i) {
+		const char32_t bitmask = 0x000000ff << (i * UCHAR_WIDTH);
+		gphm[cp_cnt - i - 1] = (c32 & bitmask) >> (i * UCHAR_WIDTH);
+	}
+	return cp_cnt;
 }
 

@@ -9,8 +9,6 @@
 #include "screen.h"
 #include "terminal.h"
 
-// Control Sequence Introducer
-#define CSI "\x1b["
 
 #if __unix__
 static struct termios s_termattr;
@@ -80,6 +78,7 @@ int set_termflags(termstatefl flags)
 
 	printf(CSI "?1049%c", flags & TERM_ALTBUF ? 'h' : 'l');
 	printf(CSI "?25%c", flags & TERM_HIDE_CURSOR ? 'l' : 'h');
+	fflush(stdout);
 
 	s_flags = flags;
 	return 0;

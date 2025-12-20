@@ -5,10 +5,16 @@
 #include <uchar.h>
 #endif
 
+#define MAX_GPHM_CPTS 4
+#define MAX_GPHM_WIDTH UINT32_WIDTH
+
 // Used frequently when manipulating coordinates
 #define MIN(x, y)          (x < y ? x : y)
 #define MAX(x, y)          (x > y ? x : y)
 #define CLAMP(x, min, max) (x < min ? min : x > max ? max : x)
+
+// Control Sequence Introducer
+#define CSI "\x1b["
 
 /* Portable typed enums from C23.
  * expands to a regular enum if __STDC_VERSION__ < 202311L) */
@@ -58,6 +64,8 @@ enum ENUMTYPE(scrflags, termstatefl) {
 
 enum ENUMTYPE(escerr, unsigned char) {
 	ESC_OK = 0,
-	ESC_COORD_X_OUT,
-	ESC_COORD_Y_OUT,
+	ESC_ERR_COORD_X,
+	ESC_ERR_COORD_Y,
+	ESC_ERR_UTF8,
+	ESC_ERR_GPHM,
 };

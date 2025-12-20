@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits.h>
+#include <stdbit.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <uchar.h>
@@ -10,16 +12,16 @@
  * This enum can be used to process utf8 strings grapheme by grapheme instead of one 'cp' at a time.
  * see `gphm_cnt`. */
 enum ENUMTYPE(cptype, char) {
-	INVALID = -1,
-	CONTINUATION,
-	ASCII,
-	TWO_WIDE_SEQ_START,
-	THREE_WIDE_SEQ_START,
-	FOUR_WIDE_SEQ_START,
+	CP_INVALID = -1,
+	CP_CONTINUATION,
+	CP_ASCII,
+	CP_SEQ_START_2,
+	CP_SEQ_START_3,
+	CP_SEQ_START_4,
 };
 
 /** Return the corresponding `enum cptype` for the given character.
- * Defaults to `INVALID` if none of the conditions are met. */
+ * Defaults to `CP_INVALID` if none of the conditions are met. */
 enum cptype get_cptype(char8_t c);
 
 /** Returns the number of graphemes with the given utf8 string `str`,
@@ -34,6 +36,9 @@ long gphm_cnt(const char* restrict str, size_t strlen);
 /** Returns the index of the first invalid utf8 codepoint found in str, -1 if there are none. */
 long get_inv_cp(const char* restrict str, size_t strlen);
 
-/** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme. */
+/** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme, 0 if first_cp is invalid */
 char32_t gphmtoc32(const char8_t* first_cp);
+/** Fills gphm with the codepoints found in c32. Returns the number of codepoints found.
+ * gphm should have at least as many bytes as there are in c32. */
+size_t c32togphm(char32_t c32, char* restrict gphm);
 
