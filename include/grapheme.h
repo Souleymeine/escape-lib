@@ -36,8 +36,8 @@ long gphm_cnt(const char* restrict str, size_t strlen);
 /** Returns the index of the first invalid utf8 codepoint found in str, -1 if there are none. */
 long get_inv_cp(const char* restrict str, size_t strlen);
 
-/** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme, 0 if first_cp is invalid */
-char32_t gphmtoc32(const char8_t* first_cp);
+/** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme, 0 if str is invalid */
+char32_t gphmtoc32(const char8_t* str);
 /** Fills gphm with the codepoints found in c32. Returns the number of codepoints found.
  * gphm should have at least as many bytes as there are in c32. */
 size_t c32togphm(char32_t c32, char* restrict gphm);

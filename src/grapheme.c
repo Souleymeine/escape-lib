@@ -58,16 +58,16 @@ long get_inv_cp(const char* restrict str, size_t strlen)
 	return -1;
 }
 
-char32_t gphmtoc32(const char8_t* first_cp)
+char32_t gphmtoc32(const char8_t* str)
 {
-	const enum cptype cp_cnt = get_cptype(*first_cp);
+	const enum cptype cp_cnt = get_cptype(*str);
 	// TODO : err when string too long
 	if (cp_cnt <= CP_CONTINUATION) {
 		return 0U;
 	}
 	char32_t c32 = 0U;
 	for (uchar i = 0; i < cp_cnt; ++i) {
-		c32 |= first_cp[cp_cnt - i - 1] << (i * UCHAR_WIDTH);
+		c32 |= str[cp_cnt - i - 1] << (i * UCHAR_WIDTH);
 	}
 
 	return c32;
