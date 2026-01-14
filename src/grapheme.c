@@ -9,8 +9,7 @@
 
 enum cptype get_cptype(char8_t c)
 {
-	/**
-	 * See https://www.rfc-editor.org/rfc/rfc3629#section-3 :
+	/** See https://www.rfc-editor.org/rfc/rfc3629#section-3 :
 	 * --------------------+-------------------------------------
 	 * Char. number range  |        UTF-8 octet sequence
 	 *    (hexadecimal)    |              (binary)

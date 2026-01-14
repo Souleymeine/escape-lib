@@ -14,20 +14,30 @@ struct rgb {
 	uint8_t b;
 };
 
+// TODO : find a way to make clang-format inline this macro
+#define TERMCLR_RGB(r, g, b) \
+	((union termclr){        \
+		.rgb = {r, g, b} \
+    })
+#define TERMCLR_ID(id)     ((union termclr){.id = id})
+#define TERMCLR_CODE(code) ((union termclr){.code = code})
+
 union termclr {
 	unsigned char code;
 	struct rgb rgb;
 	uint8_t id;
 };
 
-enum ENUMTYPE(cellflags, unsigned char) {
-	CELL_VISIBLE        = 0x1,
-	CELL_BG_CLRFMT_CODE = 0x2,
-	CELL_FG_CLRFMT_CODE = 0x4,
-	CELL_BG_CLRFMT_RGB  = 0x8,
-	CELL_FG_CLRFMT_RGB  = 0x10,
-	CELL_BG_CLRFMT_ID   = 0x20,
-	CELL_FG_CLRFMT_ID   = 0x40,
+enum ENUMTYPE(clrfmt, unsigned char) {
+	CELL_CLRFMT_CODE,
+	CELL_CLRFMT_RGB,
+	CELL_CLRFMT_ID, // 2 bits max
+};
+
+struct cellmeta {
+	enum clrfmt fg_clrfmt : 2;
+	enum clrfmt bg_clrfmt : 2;
+	bool is_visible : 1;
 };
 
 enum ENUMTYPE(termclrcode, unsigned char) {
@@ -63,12 +73,12 @@ enum ENUMTYPE(termclrcode, unsigned char) {
  */
 struct scrbuf {
 	// properties
-	union termclr bg_clr;
-	union termclr fg_clr;
+	union termclr def_bg_clr;
+	union termclr def_fg_clr;
 
 	// cell buffers
 	char32_t* chars;
-	unsigned char* cellflags;
+	struct cellmeta* cellmetas;
 	union termclr* bg_clrs;
 	union termclr* fg_clrs;
 };
@@ -128,13 +138,21 @@ static inline struct scrstr_bufview sgetstrbufview(const screen* scr)
 /** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
  * Use scorderr(x, y) to get more details. */
 long scordtoidx(const screen* scr, uint16_t x, uint16_t y);
+
 /** Returns flags of cordbounderrs given x and y. */
 enum escerr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
+
 /** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
  * Returns flags of cordbounderrs given x and y. */
 enum escerr ssetgphm(screen* restrict scr, const char* gphm, uint16_t x, uint16_t y);
-/** Sets the given color at (x, y) */
-enum escerr ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, uint16_t x, uint16_t y);
+
+/** Sets the given bg color at (x, y) */
+enum escerr ssetbgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y);
+/** Sets the given fg color at (x, y) */
+enum escerr ssetfgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y);
+/** Sets the given fg and bg colors at (x, y) */
+enum escerr ssetclrpair(screen* restrict scr, union termclr bgclr, enum clrfmt bgfmt, union termclr fgclr, enum clrfmt fgfmt,
+                        uint16_t x, uint16_t y);
 
 /** Calls ssetgphm for each grapheme in the string based from the fitst one */
 enum escerr saddstr(screen* restrict scr, const char* str, size_t strlen, uint16_t x, uint16_t y);

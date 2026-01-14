@@ -1,6 +1,4 @@
-#include <limits.h>
 #include <stdbit.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <uchar.h>
 #include <unistd.h>
@@ -80,14 +78,14 @@ static inline uintptr_t alignptr(uintptr_t addr, size_t align)
 
 /** Initializes the fields of the given scrbuf struct and the page segment it represents */
 static inline void initscrbuf(struct scrbuf* scrbuf, union termclr bg_clr, union termclr fg_clr, size_t charssize,
-                              size_t flagssize, size_t clrssize)
+                              size_t metassize, size_t clrssize)
 {
-	scrbuf->bg_clr = bg_clr;
-	scrbuf->fg_clr = fg_clr;
+	scrbuf->def_bg_clr = bg_clr;
+	scrbuf->def_fg_clr = fg_clr;
 	// We assign each buffer pointer to the right location, based on the given address and offset in the arena
 	scrbuf->chars     = OFFSET_PTR_BY(scrbuf, sizeof(struct scrbuf), char32_t);
-	scrbuf->cellflags = OFFSET_PTR_BY(scrbuf->chars, charssize, uchar);
-	scrbuf->bg_clrs   = OFFSET_PTR_BY(scrbuf->cellflags, flagssize, union termclr);
+	scrbuf->cellmetas = OFFSET_PTR_BY(scrbuf->chars, charssize, struct cellmeta);
+	scrbuf->bg_clrs   = OFFSET_PTR_BY(scrbuf->cellmetas, metassize, union termclr);
 	scrbuf->fg_clrs   = OFFSET_PTR_BY(scrbuf->bg_clrs, clrssize, union termclr);
 }
 
@@ -99,18 +97,18 @@ static inline void initstrbuf(struct _scrstrbuf* strbuf, size_t pagesize)
 	strbuf->bufsize  = s_strbuf_init_size;
 }
 
-screen* newscr(union termclr bg_clr, union termclr fg_clr, termstatefl scrflags)
+screen* newscr(union termclr bgclr, union termclr fgclr, termstatefl scrflags)
 {
 	const struct termsize termsize = get_termsize();
 	const size_t cell_cnt          = termsize.cols * termsize.rows;
 
 	const size_t charssize = cell_cnt * sizeof(char32_t);
 	const size_t clrssize  = cell_cnt * sizeof(union termclr);
-	const size_t flagssize = cell_cnt * sizeof(uchar);
+	const size_t metassize = cell_cnt * sizeof(struct cellmeta);
 	// size of struct scrbuf + the size of its buffers including worst case padding
 	const size_t worst_scrbuf_memsize
 		= WORST_SIZEOF(struct scrbuf)
-	      + (2 * (clrssize + alignof(union termclr)) + (charssize + alignof(char32_t)) + (flagssize + alignof(uchar)));
+	      + (2 * (clrssize + alignof(union termclr)) + (charssize + alignof(char32_t)) + (metassize + alignof(uchar)));
 
 	const size_t arena_pagesize  = WORST_SIZEOF(struct _scr_arena) + (1 + (scrflags & SCREEN_USE_VIRTUAL)) * worst_scrbuf_memsize;
 	const size_t strbuf_pagesize = WORST_SIZEOF(struct _scrstrbuf) + s_strbuf_init_size;
@@ -133,11 +131,11 @@ screen* newscr(union termclr bg_clr, union termclr fg_clr, termstatefl scrflags)
 	initstrbuf(arena->strbuf, strbuf_pagesize);
 
 	arena->pbuf = OFFSET_PTR_BY(arena, sizeof(struct _scr_arena), struct scrbuf);
-	initscrbuf(arena->pbuf, bg_clr, fg_clr, charssize, flagssize, clrssize);
+	initscrbuf(arena->pbuf, bgclr, fgclr, charssize, metassize, clrssize);
 	if (scrflags & SCREEN_USE_VIRTUAL) {
 		// arena is 0 initialized, so arena->_vbuf is nullptr by default
 		arena->vbuf = OFFSET_PTR_BY(arena->pbuf, worst_scrbuf_memsize, struct scrbuf);
-		initscrbuf(arena->vbuf, bg_clr, fg_clr, charssize, flagssize, clrssize);
+		initscrbuf(arena->vbuf, bgclr, fgclr, charssize, metassize, clrssize);
 	}
 
 	return arena;
@@ -207,7 +205,7 @@ bool srefresh(screen* scr)
 	strbufadd(scr->strbuf, CSI "H", sizeof(CSI) - 1 + 1);
 	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
 	for (size_t i = 0; i < cell_cnt; ++i) {
-		if (scr->pbuf->cellflags[i] & CELL_VISIBLE) {
+		if (scr->pbuf->cellmetas[i].is_visible) {
 			char mvseq[16];
 			const size_t line = i / scr->termsize.cols;
 			const size_t col  = i - line * scr->termsize.cols;
@@ -264,21 +262,46 @@ enum escerr ssetgphm(screen* restrict scr, const char* gphm, u16 x, u16 y)
 		if (!c32) {
 			return ESC_ERR_GPHM;
 		}
-		scr->pbuf->cellflags[idx] |= CELL_VISIBLE;
-		scr->pbuf->chars[idx] = c32;
+		scr->pbuf->cellmetas[idx].is_visible = true;
+
+		scr->pbuf->chars[idx]                = c32;
 	}
 	return sgetcorderr(scr, x, y);
 }
 
-enum escerr ssetclr(screen* restrict scr, union termclr clr, uchar clrflags, u16 x, u16 y)
+enum escerr ssetbgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		scr->pbuf->cellflags[idx] |= clrflags | CELL_VISIBLE;
-		const bool is_bg    = clrflags & (CELL_BG_CLRFMT_CODE | CELL_BG_CLRFMT_ID | CELL_BG_CLRFMT_RGB);
-		union termclr* cell = is_bg ? &scr->pbuf->bg_clrs[idx] : &scr->pbuf->fg_clrs[idx];
+		scr->pbuf->cellmetas[idx].is_visible = true;
+		scr->pbuf->cellmetas[idx].bg_clrfmt  = fmt;
 
-		*cell = clr;
+		scr->pbuf->bg_clrs[idx] = clr;
+	}
+	return sgetcorderr(scr, x, y);
+}
+enum escerr ssetfgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y)
+{
+	const long idx = scordtoidx(scr, x, y);
+	if (idx != -1) {
+		scr->pbuf->cellmetas[idx].is_visible = true;
+		scr->pbuf->cellmetas[idx].fg_clrfmt  = fmt;
+
+		scr->pbuf->fg_clrs[idx] = clr;
+	}
+	return sgetcorderr(scr, x, y);
+}
+enum escerr ssetclrpair(screen* restrict scr, union termclr bgclr, enum clrfmt bgfmt, union termclr fgclr, enum clrfmt fgfmt,
+                        uint16_t x, uint16_t y)
+{
+	const long idx = scordtoidx(scr, x, y);
+	if (idx != -1) {
+		scr->pbuf->cellmetas[idx].is_visible = true;
+		scr->pbuf->cellmetas[idx].bg_clrfmt  = bgfmt;
+		scr->pbuf->cellmetas[idx].fg_clrfmt  = fgfmt;
+
+		scr->pbuf->bg_clrs[idx] = bgclr;
+		scr->pbuf->fg_clrs[idx] = fgclr;
 	}
 	return sgetcorderr(scr, x, y);
 }
