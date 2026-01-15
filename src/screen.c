@@ -211,6 +211,7 @@ bool srefresh(screen* scr)
 			continue;
 		}
 
+		const bool cell_has_clr = (scr->pbuf->cellmetas[i].bg_clrfmt != 0 || scr->pbuf->cellmetas[i].fg_clrfmt != 0);
 		// TODO : Factor those 2 switches to remove duplication
 		switch (scr->pbuf->cellmetas[i].bg_clrfmt) {
 			case CELL_CLRFMT_CODE:
@@ -230,27 +231,25 @@ bool srefresh(screen* scr)
 				strbufadd(scr->strbuf, clr_id_seq, clr_id_seqlen);
 				break;
 		}
-		switch (scr->pbuf->cellmetas[i].fg_clrfmt) {
-			case CELL_CLRFMT_CODE:
-				char clr_code_seq[8];
-				const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", scr->pbuf->fg_clrs[i].code);
-				strbufadd(scr->strbuf, clr_code_seq, clr_code_seqlen);
-				break;
-			case CELL_CLRFMT_RGB:
-				char clr_rgb_seq[64];
-				const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "38;2;%hhu;%hhu;%hhum", scr->pbuf->fg_clrs[i].rgb.r,
-				                                      scr->pbuf->fg_clrs[i].rgb.g, scr->pbuf->fg_clrs[i].rgb.b);
-				strbufadd(scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
-				break;
-			case CELL_CLRFMT_ID:
-				char clr_id_seq[32];
-				const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "38;5;%hhum", scr->pbuf->fg_clrs[i].id);
-				strbufadd(scr->strbuf, clr_id_seq, clr_id_seqlen);
-				break;
-		}
-
-		const bool cell_has_clr = (scr->pbuf->cellmetas[i].bg_clrfmt != 0 || scr->pbuf->cellmetas[i].fg_clrfmt != 0);
 		if (scr->pbuf->chars[i] != 0) {
+			switch (scr->pbuf->cellmetas[i].fg_clrfmt) {
+				case CELL_CLRFMT_CODE:
+					char clr_code_seq[8];
+					const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", scr->pbuf->fg_clrs[i].code);
+					strbufadd(scr->strbuf, clr_code_seq, clr_code_seqlen);
+					break;
+				case CELL_CLRFMT_RGB:
+					char clr_rgb_seq[64];
+					const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "38;2;%hhu;%hhu;%hhum", scr->pbuf->fg_clrs[i].rgb.r,
+					                                      scr->pbuf->fg_clrs[i].rgb.g, scr->pbuf->fg_clrs[i].rgb.b);
+					strbufadd(scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
+					break;
+				case CELL_CLRFMT_ID:
+					char clr_id_seq[32];
+					const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "38;5;%hhum", scr->pbuf->fg_clrs[i].id);
+					strbufadd(scr->strbuf, clr_id_seq, clr_id_seqlen);
+					break;
+			}
 			char mvseq[16];
 			const size_t line = i / scr->termsize.cols;
 			const size_t col  = i - line * scr->termsize.cols;
