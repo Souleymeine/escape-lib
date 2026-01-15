@@ -204,12 +204,14 @@ bool srefresh(screen* scr)
 {
 	// TODO : test if filling the strbuf directly (without any temporary buffers) is more efficient
 	strbufadd(scr->strbuf, CSI "H", sizeof(CSI));
-	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
+	const size_t cell_cnt   = scr->termsize.cols * scr->termsize.rows;
+	const uint16_t last_col = 0, last_row = 0;
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (!scr->pbuf->cellmetas[i].is_visible) {
 			continue;
 		}
 
+		// TODO : Factor those 2 switches to remove duplication
 		switch (scr->pbuf->cellmetas[i].bg_clrfmt) {
 			case CELL_CLRFMT_CODE:
 				char clr_code_seq[8];
@@ -252,9 +254,11 @@ bool srefresh(screen* scr)
 			char mvseq[16];
 			const size_t line = i / scr->termsize.cols;
 			const size_t col  = i - line * scr->termsize.cols;
-			// TODO : remove calls to stdio
-			const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", line + 1, col + 1);
-			strbufadd(scr->strbuf, mvseq, mvseq_len);
+			if (col != last_col + 1) {
+				// TODO : remove calls to stdio
+				const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", line + 1, col + 1);
+				strbufadd(scr->strbuf, mvseq, mvseq_len);
+			}
 
 			char gphm[MAX_GPHM_CPTS];
 			size_t cp_cnt = c32togphm(scr->pbuf->chars[i], gphm);
