@@ -9,6 +9,7 @@ int main()
 
 	setgphm("┌", 5, 5);
 	setgphm("a", 15, 8);
+	setclrpair(CLR_RGB(125, 200, 50), CLR_CODE(31), 15, 8);
 	refresh();
 
 	getchar();

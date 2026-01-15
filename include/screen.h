@@ -15,28 +15,34 @@ struct rgb {
 };
 
 // TODO : find a way to make clang-format inline this macro
-#define TERMCLR_RGB(r, g, b) \
-	((union termclr){        \
-		.rgb = {r, g, b} \
+#define CLR_RGB(r, g, b)                             \
+	((struct termclr){                                   \
+		.fmt = CELL_CLRFMT_RGB, .value.rgb = {r, g, b} \
     })
-#define TERMCLR_ID(id)     ((union termclr){.id = id})
-#define TERMCLR_CODE(code) ((union termclr){.code = code})
+#define CLR_ID(c)   ((struct termclr){.fmt = CELL_CLRFMT_ID, .value.id = c})
+#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = c})
 
-union termclr {
+enum ENUMTYPE(clrfmt, unsigned char) {
+	CELL_CLRFMT_CODE = 1,
+	CELL_CLRFMT_RGB,
+	CELL_CLRFMT_ID, // 3 bits max 0b100
+};
+
+union termclrval {
 	unsigned char code;
 	struct rgb rgb;
 	uint8_t id;
 };
 
-enum ENUMTYPE(clrfmt, unsigned char) {
-	CELL_CLRFMT_CODE,
-	CELL_CLRFMT_RGB,
-	CELL_CLRFMT_ID, // 2 bits max
+struct termclr {
+	enum clrfmt fmt;
+	union termclrval value;
 };
 
+// Must fit in 1 byte! (8 bits max)
 struct cellmeta {
-	enum clrfmt fg_clrfmt : 2;
-	enum clrfmt bg_clrfmt : 2;
+	enum clrfmt fg_clrfmt : 3;
+	enum clrfmt bg_clrfmt : 3;
 	bool is_visible : 1;
 };
 
@@ -73,14 +79,14 @@ enum ENUMTYPE(termclrcode, unsigned char) {
  */
 struct scrbuf {
 	// properties
-	union termclr def_bg_clr;
-	union termclr def_fg_clr;
+	struct termclr def_bg_clr;
+	struct termclr def_fg_clr;
 
 	// cell buffers
 	char32_t* chars;
 	struct cellmeta* cellmetas;
-	union termclr* bg_clrs;
-	union termclr* fg_clrs;
+	union termclrval* bg_clrs;
+	union termclrval* fg_clrs;
 };
 
 struct scrstr_bufview {
@@ -113,7 +119,7 @@ void scrmemargs(size_t scrstr_bufsize, float scrstr_growth_rate);
 
 /** Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
  * scrflags holds the same flags as termflags with some additional flags for screens exclusively. */
-screen* newscr(union termclr bg_clr, union termclr fg_clr, termstatefl scrflags);
+screen* newscr(struct termclr bg_clr, struct termclr fg_clr, termstatefl scrflags);
 /** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
 bool freescr(screen* scr);
 
@@ -147,12 +153,11 @@ enum escerr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
 enum escerr ssetgphm(screen* restrict scr, const char* gphm, uint16_t x, uint16_t y);
 
 /** Sets the given bg color at (x, y) */
-enum escerr ssetbgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y);
+enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
 /** Sets the given fg color at (x, y) */
-enum escerr ssetfgclr(screen* restrict scr, union termclr clr, enum clrfmt fmt, uint16_t x, uint16_t y);
+enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
 /** Sets the given fg and bg colors at (x, y) */
-enum escerr ssetclrpair(screen* restrict scr, union termclr bgclr, enum clrfmt bgfmt, union termclr fgclr, enum clrfmt fgfmt,
-                        uint16_t x, uint16_t y);
+enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
 
 /** Calls ssetgphm for each grapheme in the string based from the fitst one */
 enum escerr saddstr(screen* restrict scr, const char* str, size_t strlen, uint16_t x, uint16_t y);
@@ -161,8 +166,8 @@ extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-#define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
-#define DEF_SCR_FGCLR ((union termclr){.code = DEF_CLRCODE})
+#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value = BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value = DEF_CLRCODE})
 
 #define getpbuf()       sgetpbuf(stdscr)
 #define getvbuf()       sgetvbuf(stdscr)
@@ -171,6 +176,8 @@ extern screen* stdscr;
 #define corderr(...)    scorderr(stdscr, __VA_ARGS__)
 #define setgphm(...)    ssetgphm(stdscr, __VA_ARGS__)
 #define cordtoidx(...)  scordtoidx(stdscr, __VA_ARGS__)
-#define setclr(...)     ssetclr(stdscr, __VA_ARGS__)
+#define setfgclr(...)   ssetfgclr(stdscr, __VA_ARGS__)
+#define setbgclr(...)   ssetbgclr(stdscr, __VA_ARGS__)
+#define setclrpair(...) ssetclrpair(stdscr, __VA_ARGS__)
 #define addstr(...)     saddstr(stdscr, __VA_ARGS__)
 
