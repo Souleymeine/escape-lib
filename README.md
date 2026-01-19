@@ -27,6 +27,7 @@ void cool_test()
            0, 0, STYLE_ITALIC, WRAPPED);
     addstr("You are filled with determination.",
            5, 8, RED | BOLD, CUT);
+    refresh();
 
     waitfor(KEY_RETURN);
     cleanup_term();
