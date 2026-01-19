@@ -17,22 +17,22 @@ void cool_test()
 ```
 Such a test could be written in a `goal/style-handling` branch so that other branches, let's say `feature/color-handling` and `feature/style-handling` can be open after the "goal" branch has been merged. This will help focus developpement into the implementation of actual features instead of trying to implement everything without a clear direction.
 
-The above example could then become :
+The above example could then become:
 ```C
 void cool_test()
 {
-    altbuf_visbile(true);
-    cursor_visible(false);
+	init_flags(TERM_NO_ECHO | TERM_HIDE_CURSOR | TERM_ALTBUF);
 
-    print_styled_wrapped("The excitement of creating something new and hopefully useful flows down your veins as you prepare for the very first commit.", 85, ITALIC);
-    move_relative(5, 8);
-    print_styled("You are filled with determination.", RED, BOLD);
+    addstr("The excitement of creating something new and hopefully useful flows down your veins as you prepare for the very first commit.",
+           0, 0, STYLE_ITALIC, WRAPPED);
+    addstr("You are filled with determination.",
+           5, 8, RED | BOLD, CUT);
 
-    getchar();
-    altbuf_visbile(false);
-    cursor_visible(true);
+    waitfor(KEY_RETURN);
+    cleanup_term();
 }
 ```
+(based on actual code/projections of the current state of the library)
 
 In the next branches.
 (Of course the latter is horrible but you get the point).
