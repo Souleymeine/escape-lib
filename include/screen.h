@@ -166,8 +166,8 @@ extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value = BLACK})
-#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value = DEF_CLRCODE})
+#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = DEF_CLRCODE})
 
 #define getpbuf()       sgetpbuf(stdscr)
 #define getvbuf()       sgetvbuf(stdscr)

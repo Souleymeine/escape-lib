@@ -1,6 +1,7 @@
 #include <stdbit.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <uchar.h>
 #include <unistd.h>
 
@@ -20,7 +21,7 @@
 #include "_escdef.h"
 
 // Default values
-static size_t s_strbuf_init_size  = 262144; // 2^18
+static size_t s_strbuf_init_size  = 131072; // 2^17
 static float s_strbuf_growth_rate = 1.5f;
 
 void scrmemargs(size_t new_init_strbuf_size, float new_strbuf_growth_rate)
@@ -155,14 +156,14 @@ bool freescr(screen* scr)
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * ------------------------ */
-bool strbuf_realloc(struct _scrstrbuf* restrict strbuf)
+struct _scrstrbuf* strbuf_grow(struct _scrstrbuf* strbuf)
 {
 	const size_t newbufsize   = strbuf->bufsize * s_strbuf_growth_rate;
 	const size_t new_pagesize = WORST_SIZEOF(struct _scrstrbuf) + newbufsize;
 
 	struct _scrstrbuf* newstrbuf = heapalloc(new_pagesize);
 	if (!newstrbuf) {
-		return true;
+		return nullptr;
 	}
 
 	newstrbuf->pagesize = new_pagesize;
@@ -177,22 +178,28 @@ bool strbuf_realloc(struct _scrstrbuf* restrict strbuf)
 	if (heapfree(strbuf, strbuf->bufsize)) {
 		// TODO : Return an error via enum so we know exactly what went wrong instead of just "true"
 		heapfree(newstrbuf, new_pagesize); // I fear there is nothing we can do...
-		return true;
+		return nullptr;
 	}
 
-	strbuf = newstrbuf;
-	return false;
+	strbuf = nullptr;
+	return newstrbuf;
 }
 
-static inline void strbufadd(struct _scrstrbuf* restrict strbuf, const char* str, size_t strlen)
+static inline void strbufadd(struct _scrstrbuf** strbuf, const char* str, size_t strlen)
 {
-	if (strbuf->cursor + strlen > strbuf->bufsize) {
-		strbuf_realloc(strbuf);
+	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
+		*strbuf = strbuf_grow(*strbuf);
+#if DEBUG
+		if (!(*strbuf)) {
+			fprintf(stderr, "Could not reallocate string buffer, exiting before segfault...\n");
+			exit(1);
+		}
+#endif
 	}
 	for (size_t i = 0; i < strlen; ++i) {
-		strbuf->buf[strbuf->cursor + i] = str[i];
+		(*strbuf)->buf[(*strbuf)->cursor + i] = str[i];
 	}
-	strbuf->cursor += strlen;
+	(*strbuf)->cursor += strlen;
 }
 
 // TODO : Allow for saving strbuf to any file
@@ -203,9 +210,9 @@ static inline void strbufadd(struct _scrstrbuf* restrict strbuf, const char* str
 bool srefresh(screen* scr)
 {
 	// TODO : test if filling the strbuf directly (without any temporary buffers) is more efficient
-	strbufadd(scr->strbuf, CSI "H", sizeof(CSI));
-	const size_t cell_cnt   = scr->termsize.cols * scr->termsize.rows;
-	const uint16_t last_col = 0, last_row = 0;
+	strbufadd(&scr->strbuf, CSI "H", sizeof(CSI));
+	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
+	uint16_t last_col = 0, last_row = 0;
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (!scr->pbuf->cellmetas[i].is_visible) {
 			continue;
@@ -217,62 +224,67 @@ bool srefresh(screen* scr)
 			case CELL_CLRFMT_CODE:
 				char clr_code_seq[8];
 				const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", scr->pbuf->bg_clrs[i].code + 10);
-				strbufadd(scr->strbuf, clr_code_seq, clr_code_seqlen);
+				strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 				break;
 			case CELL_CLRFMT_RGB:
 				char clr_rgb_seq[64];
 				const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "48;2;%hhu;%hhu;%hhum", scr->pbuf->bg_clrs[i].rgb.r,
 				                                      scr->pbuf->bg_clrs[i].rgb.g, scr->pbuf->bg_clrs[i].rgb.b);
-				strbufadd(scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
+				strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 				break;
 			case CELL_CLRFMT_ID:
 				char clr_id_seq[32];
 				const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "48;5;%hhum", scr->pbuf->bg_clrs[i].id);
-				strbufadd(scr->strbuf, clr_id_seq, clr_id_seqlen);
+				strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
 				break;
 		}
-		if (scr->pbuf->chars[i] != 0) {
-			switch (scr->pbuf->cellmetas[i].fg_clrfmt) {
-				case CELL_CLRFMT_CODE:
-					char clr_code_seq[8];
-					const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", scr->pbuf->fg_clrs[i].code);
-					strbufadd(scr->strbuf, clr_code_seq, clr_code_seqlen);
-					break;
-				case CELL_CLRFMT_RGB:
-					char clr_rgb_seq[64];
-					const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "38;2;%hhu;%hhu;%hhum", scr->pbuf->fg_clrs[i].rgb.r,
-					                                      scr->pbuf->fg_clrs[i].rgb.g, scr->pbuf->fg_clrs[i].rgb.b);
-					strbufadd(scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
-					break;
-				case CELL_CLRFMT_ID:
-					char clr_id_seq[32];
-					const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "38;5;%hhum", scr->pbuf->fg_clrs[i].id);
-					strbufadd(scr->strbuf, clr_id_seq, clr_id_seqlen);
-					break;
-			}
-			char mvseq[16];
-			const size_t line = i / scr->termsize.cols;
-			const size_t col  = i - line * scr->termsize.cols;
-			if (col != last_col + 1) {
-				// TODO : remove calls to stdio
-				const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", line + 1, col + 1);
-				strbufadd(scr->strbuf, mvseq, mvseq_len);
-			}
+		switch (scr->pbuf->cellmetas[i].fg_clrfmt) {
+			case CELL_CLRFMT_CODE:
+				char clr_code_seq[8];
+				const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", scr->pbuf->fg_clrs[i].code);
+				strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
+				break;
+			case CELL_CLRFMT_RGB:
+				char clr_rgb_seq[64];
+				const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "38;2;%hhu;%hhu;%hhum", scr->pbuf->fg_clrs[i].rgb.r,
+				                                      scr->pbuf->fg_clrs[i].rgb.g, scr->pbuf->fg_clrs[i].rgb.b);
+				strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
+				break;
+			case CELL_CLRFMT_ID:
+				char clr_id_seq[32];
+				const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "38;5;%hhum", scr->pbuf->fg_clrs[i].id);
+				strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
+				break;
+		}
 
+		const size_t row = i / scr->termsize.cols;
+		const size_t col = i - row * scr->termsize.cols;
+		if (last_col == scr->termsize.cols - 1 && col == 0) {
+			strbufadd(&scr->strbuf, "\n", 1);
+		} else if (col != last_col + 1 || row != last_row) {
+			// TODO : remove calls to stdio
+			char mvseq[16];
+			const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", row + 1, col + 1);
+			strbufadd(&scr->strbuf, mvseq, mvseq_len);
+		}
+
+		if (scr->pbuf->chars[i] == 0 && cell_has_clr) {
+			strbufadd(&scr->strbuf, " ", 1);
+		} else {
 			char gphm[MAX_GPHM_CPTS];
 			size_t cp_cnt = c32togphm(scr->pbuf->chars[i], gphm);
-			strbufadd(scr->strbuf, gphm, cp_cnt);
-		} else if (scr->pbuf->chars[i] == 0 && cell_has_clr) {
-			strbufadd(scr->strbuf, " ", 1);
+			strbufadd(&scr->strbuf, gphm, cp_cnt);
 		}
 
 		if (cell_has_clr) {
-			strbufadd(scr->strbuf, CSI "m", 3);
+			strbufadd(&scr->strbuf, CSI "m", 3);
 		}
+		last_col = col;
+		last_row = row;
 	}
 
 	long bytes_written;
-	const ulong bytes_to_write = scr->strbuf->cursor + 1;
+	const ulong bytes_to_write = scr->strbuf->cursor;
 
 #if __unix__
 	bytes_written = write(STDOUT_FILENO, scr->strbuf->buf, bytes_to_write);
