@@ -15,7 +15,7 @@ struct rgb {
 };
 
 // TODO : find a way to make clang-format inline this macro
-#define CLR_RGB(r, g, b)                             \
+#define CLR_RGB(r, g, b)                                 \
 	((struct termclr){                                   \
 		.fmt = CELL_CLRFMT_RGB, .value.rgb = {r, g, b} \
     })
