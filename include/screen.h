@@ -19,8 +19,9 @@ struct rgb {
 	((struct termclr){                                   \
 		.fmt = CELL_CLRFMT_RGB, .value.rgb = {r, g, b} \
     })
-#define CLR_ID(c)   ((struct termclr){.fmt = CELL_CLRFMT_ID, .value.id = c})
-#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = c})
+#define CLR_ID(c) ((struct termclr){.fmt = CELL_CLRFMT_ID, .value.id = c})
+// see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
+#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = c + 30})
 
 enum ENUMTYPE(clrfmt, unsigned char) {
 	CELL_CLRFMT_CODE = 1,
@@ -46,16 +47,16 @@ struct cellmeta {
 	bool is_visible : 1;
 };
 
-enum ENUMTYPE(termclrcode, unsigned char) {
-	BLACK,
-	RED,
-	GREEN,
-	YELLOW,
-	BLUE,
-	MAGENTA,
-	CYAN,
-	WHITE,
-	DEF_CLRCODE,
+enum ENUMTYPE(clrcode, unsigned char) {
+	CLRCODE_BLACK,
+	CLRCODE_RED,
+	CLRCODE_GREEN,
+	CLRCODE_YELLOW,
+	CLRCODE_BLUE,
+	CLRCODE_MAGENTA,
+	CLRCODE_CYAN,
+	CLRCODE_WHITE,
+	CLRCODE_DEF = 9,
 };
 
 /**
@@ -166,8 +167,8 @@ extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = BLACK})
-#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = DEF_CLRCODE})
+#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = CLRCODE_BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = CLRCODE_DEF})
 
 #define getpbuf()       sgetpbuf(stdscr)
 #define getvbuf()       sgetvbuf(stdscr)

@@ -219,7 +219,7 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 			strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 			break;
 		case CELL_CLRFMT_ID:
-		char clr_id_seq[32];
+			char clr_id_seq[32];
 			const u8 clr_id = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
 			const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "%c8;5;%hhum", isbg ? '4' : '3', clr_id);
 			strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
@@ -236,15 +236,13 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 bool srefresh(screen* scr)
 {
 	// TODO : test if filling the strbuf directly (without any temporary buffers) is more efficient
-	strbufadd(&scr->strbuf, CSI "H", sizeof(CSI));
+	strbufadd(&scr->strbuf, CSI "H", 2);
 	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
 	uint16_t last_col = 0, last_row = 0;
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (!scr->pbuf->cellmetas[i].is_visible) {
 			continue;
 		}
-
-		const bool cell_has_clr = (scr->pbuf->cellmetas[i].bg_clrfmt || scr->pbuf->cellmetas[i].fg_clrfmt);
 
 		addclrtostrbuf(scr, i, true);
 		addclrtostrbuf(scr, i, false);
@@ -260,6 +258,7 @@ bool srefresh(screen* scr)
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
+		const bool cell_has_clr = (scr->pbuf->cellmetas[i].bg_clrfmt || scr->pbuf->cellmetas[i].fg_clrfmt);
 		if (!scr->pbuf->chars[i] && cell_has_clr) {
 			strbufadd(&scr->strbuf, " ", 1);
 		} else {
