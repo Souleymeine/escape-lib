@@ -11,8 +11,7 @@ int main()
 	const struct termsize size = get_termsize();
 	for (uint16_t y = 1; y <= size.rows; ++y) {
 		for (uint16_t x = 1; x <= size.cols; ++x) {
-			setgphm("é", x, y);
-			setclrpair(CLR_RGB(x * 255 / size.cols, 0, y * 255 / size.rows), CLR_RGB(y * 255 / size.rows, x * 255 / size.cols, 0),
+			setclrpair(CLR_RGB(x * 255 / size.cols, 0, y * 255 / size.rows), CLR_CODE(31),
 			           x, y);
 		}
 	}
