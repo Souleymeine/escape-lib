@@ -1,5 +1,7 @@
 This project uses semantic versioning : https://semver.org/
 
+# NOT READY FOR USE. THERE IS ABSOLUTELY NO WARRANTY
+
 ## Developpement scheme
 The project will use the `feature` / `bugfix` / `test` convetion for branch names but adds another one called "goal".
 Branch named `goal/something` will contain a few commits setting up a test file which will do something that should be easily achievable using the library but that is not yet implemented. Quick example :
@@ -24,9 +26,9 @@ void cool_test()
 	init_flags(TERM_NO_ECHO | TERM_HIDE_CURSOR | TERM_ALTBUF);
 
     addstr("The excitement of creating something new and hopefully useful flows down your veins as you prepare for the very first commit.",
-           0, 0, STYLE_ITALIC, WRAPPED);
+           0, 0, STYLE_ITALIC, OFFSCR_WRAPPED);
     addstr("You are filled with determination.",
-           5, 8, RED | BOLD, CUT);
+           5, 8, CLR_CODE(CLRCODE_RED), STYLE_BOLD | STYLE_UNDERLINE, OFFSCR_CUT);
     refresh();
 
     waitfor(KEY_RETURN);
@@ -51,7 +53,11 @@ They respectively refer to the smallest bit of information in a utf8 string (cod
 - [ ] Use zig as a build system rather than make (painful, painful indeed after so many hours writing a Makefile, but necessary).
     See https://youtu.be/i9nFvSpcCzo?si=yxOfo1hWYExjidIT.
     "Replacing your dependency on make by zig, and now this new dependency also cross compiles", **marvelous**.
-- [ ] Binding for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal)
+- [ ] Cross platform terminal independant escape sequences management : [replacement for termcaps/terminfo](https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net)
+- [ ] Asbtraction layer above device/kernel specific interaction mechanism with stdin/stdout and the console/tty itself (for instance, a crossplatform `getch`)
+- [ ] "Immediate" mode, as opposed to retained mode when using `TERM_ALTBUF`.
+- [ ] UI layout (as en extension)
+- [ ] Bindings for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal)
 - [ ] Limit the usage of the standard library to bit utilities (stdbit.h) and system calls (no C runtime, like malloc, printf, fopen, ...)
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics
