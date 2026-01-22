@@ -55,6 +55,7 @@ They respectively refer to the smallest bit of information in a utf8 string (cod
     "Replacing your dependency on make by zig, and now this new dependency also cross compiles", **marvelous**.
 - [ ] Cross platform terminal independant escape sequences management : [replacement for termcaps/terminfo](https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net)
 - [ ] Asbtraction layer above device/kernel specific interaction mechanism with stdin/stdout and the console/tty itself (for instance, a crossplatform `getch`)
+- [ ] Find the best algorith for `refresh`
 - [ ] "Immediate" mode, as opposed to retained mode when using `TERM_ALTBUF`.
 - [ ] UI layout (as en extension)
 - [ ] Bindings for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal)
