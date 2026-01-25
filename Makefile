@@ -74,7 +74,7 @@ RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror -DNDEBUG
 USE_LD_FLAG   := $(if $(and $(filter-out ld,$(LD)),$(filter-out zig cc,$(CC))),-fuse-ld=$(LD))
 STRIP_FLAG    := $(if $(filter true yes 1,$(STRIP)),-s)
 LTO_FLAG      := $(if $(filter true yes 1,$(LTO)),-flto)
-TEMPS_FLAGS   := $(if $(filter true yes 1,$(TEMPS)),-fverbose-asm -save-temps=obj)
+TEMPS_FLAGS   := $(if $(filter true yes 1,$(TEMPS)),-save-temps=obj)
 # intermediate files may contain syntax that is not compliant with the C standard
 ifeq ($(TEMPS_FLAGS),)
 DEBUG_FLAGS   += -pedantic

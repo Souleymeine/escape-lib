@@ -91,10 +91,10 @@ static inline void initscrbuf(struct scrbuf* scrbuf, struct termclr bg_clr, stru
 	scrbuf->fg_clrs   = OFFSET_PTR_BY(scrbuf->bg_clrs, clrssize, union termclrval);
 }
 
-static inline void initstrbuf(struct _scrstrbuf* strbuf, size_t pagesize)
+static inline void initstrbuf(struct _strbuf* strbuf, size_t pagesize)
 {
 	strbuf->pagesize = pagesize;
-	strbuf->buf      = OFFSET_PTR_BY(strbuf, sizeof(struct _scrstrbuf), char);
+	strbuf->buf      = OFFSET_PTR_BY(strbuf, sizeof(struct _strbuf), char);
 	strbuf->cursor   = 0;
 	strbuf->bufsize  = s_strbuf_init_size;
 }
@@ -113,13 +113,13 @@ screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 	      + (2 * (clrssize + alignof(union termclrval)) + (charssize + alignof(char32_t)) + (metassize + alignof(uchar)));
 
 	const size_t arena_pagesize  = WORST_SIZEOF(struct _scr_arena) + (1 + (scrflags & SCREEN_USE_VIRTUAL)) * worst_scrbuf_memsize;
-	const size_t strbuf_pagesize = WORST_SIZEOF(struct _scrstrbuf) + s_strbuf_init_size;
+	const size_t strbuf_pagesize = WORST_SIZEOF(struct _strbuf) + s_strbuf_init_size;
 
 	struct _scr_arena* arena = heapalloc(arena_pagesize);
 	if (!arena) {
 		return nullptr;
 	}
-	struct _scrstrbuf* strbuf = heapalloc(strbuf_pagesize);
+	struct _strbuf* strbuf = heapalloc(strbuf_pagesize);
 	if (!strbuf) {
 		heapfree(arena, arena_pagesize);
 		return nullptr;
@@ -156,12 +156,12 @@ bool freescr(screen* scr)
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * ------------------------ */
-struct _scrstrbuf* strbuf_grow(struct _scrstrbuf* strbuf)
+struct _strbuf* strbuf_grow(struct _strbuf* strbuf)
 {
 	const size_t newbufsize   = strbuf->bufsize * s_strbuf_growth_rate;
-	const size_t new_pagesize = WORST_SIZEOF(struct _scrstrbuf) + newbufsize;
+	const size_t new_pagesize = WORST_SIZEOF(struct _strbuf) + newbufsize;
 
-	struct _scrstrbuf* newstrbuf = heapalloc(new_pagesize);
+	struct _strbuf* newstrbuf = heapalloc(new_pagesize);
 	if (!newstrbuf) {
 		return nullptr;
 	}
@@ -169,7 +169,7 @@ struct _scrstrbuf* strbuf_grow(struct _scrstrbuf* strbuf)
 	newstrbuf->pagesize = new_pagesize;
 	newstrbuf->bufsize  = newbufsize;
 	newstrbuf->cursor   = strbuf->cursor;
-	newstrbuf->buf      = OFFSET_PTR_BY(newstrbuf, sizeof(struct _scrstrbuf), char);
+	newstrbuf->buf      = OFFSET_PTR_BY(newstrbuf, sizeof(struct _strbuf), char);
 	// -- CRITICAL : move memory (MUST be faster than or equal to memmove) -- //
 	for (size_t i = 0; i < strbuf->bufsize; ++i) {
 		newstrbuf->buf[i] = strbuf->buf[i];
@@ -185,7 +185,7 @@ struct _scrstrbuf* strbuf_grow(struct _scrstrbuf* strbuf)
 	return newstrbuf;
 }
 
-static inline void strbufadd(struct _scrstrbuf** strbuf, const char* str, size_t strlen)
+static inline void strbufadd(struct _strbuf** strbuf, const char* str, size_t strlen)
 {
 	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
 		*strbuf = strbuf_grow(*strbuf);
@@ -208,19 +208,20 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 	switch (fmt) {
 		case CELL_CLRFMT_CODE:
 			char clr_code_seq[8];
-			const uchar clr_code = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
+			const uchar clr_code         = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
 			const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", clr_code);
 			strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 			break;
 		case CELL_CLRFMT_RGB:
 			char clr_rgb_seq[64];
 			const struct rgb clr_rgb = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
-			const size_t clr_rgb_seqlen = sprintf(clr_rgb_seq, CSI "%c8;2;%hhu;%hhu;%hhum", isbg ? '4' : '3', clr_rgb.r, clr_rgb.g, clr_rgb.b);
+			const size_t clr_rgb_seqlen
+				= sprintf(clr_rgb_seq, CSI "%c8;2;%hhu;%hhu;%hhum", isbg ? '4' : '3', clr_rgb.r, clr_rgb.g, clr_rgb.b);
 			strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 			break;
 		case CELL_CLRFMT_ID:
 			char clr_id_seq[32];
-			const u8 clr_id = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
+			const u8 clr_id            = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
 			const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "%c8;5;%hhum", isbg ? '4' : '3', clr_id);
 			strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
 			break;
@@ -247,14 +248,14 @@ bool srefresh(screen* scr)
 		addclrtostrbuf(scr, i, true);
 		addclrtostrbuf(scr, i, false);
 
-		const size_t row = i / scr->termsize.cols;
-		const size_t col = i - row * scr->termsize.cols;
+		const uint16_t row = i / scr->termsize.cols;
+		const uint16_t col = i - row * scr->termsize.cols;
 		if (last_col == scr->termsize.cols - 1 && col == 0) {
 			strbufadd(&scr->strbuf, "\n", 1);
 		} else if (col != last_col + 1 || row != last_row) {
 			// TODO : remove calls to stdio
 			char mvseq[16];
-			const size_t mvseq_len = sprintf(mvseq, CSI "%zu;%zuH", row + 1, col + 1);
+			const size_t mvseq_len = sprintf(mvseq, CSI "%d;%dH", row + 1, col + 1);
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
@@ -275,7 +276,7 @@ bool srefresh(screen* scr)
 	}
 
 	long bytes_written;
-	const ulong bytes_to_write = scr->strbuf->cursor - 1;
+	const ulong bytes_to_write = scr->strbuf->cursor;
 
 #if __unix__
 	bytes_written = write(STDOUT_FILENO, scr->strbuf->buf, bytes_to_write);

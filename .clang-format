@@ -30,7 +30,7 @@ AllowShortEnumsOnASingleLine: true
 
 AllowShortFunctionsOnASingleLine: Empty
 
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortIfStatementsOnASingleLine: false
 
 BinPackArguments: true
 
@@ -55,7 +55,7 @@ IncludeCategories:
   - Regex:           '"[[:alnum:].]+"'
     SortPriority:    2
 
-IndentCaseLabels: true
+IndentCaseLabels: false
 
 InsertTrailingCommas: None
 

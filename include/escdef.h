@@ -32,6 +32,13 @@
 // #define GPHM(str) ((const char (*)[sizeof(str) - 1]) u8##str)
 // #endif
 
+// Syntax sugar for array casts
+#define ARR(type, ...) \
+	(type[])           \
+	{                  \
+		__VA_ARGS__    \
+	}
+
 /*
  * To represent coordinates/length in a terminal,
  * 8 bits is too small, 16 is too big, so 16 bits is enough.
@@ -69,3 +76,4 @@ enum ENUMTYPE(escerr, unsigned char) {
 	ESC_ERR_UTF8,
 	ESC_ERR_GPHM,
 };
+

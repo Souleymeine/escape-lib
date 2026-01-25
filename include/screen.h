@@ -95,7 +95,7 @@ struct scrstr_bufview {
 	size_t size;
 };
 
-struct _scrstrbuf {
+struct _strbuf {
 	size_t pagesize;
 	size_t bufsize;
 	size_t cursor;
@@ -106,7 +106,7 @@ struct _scr_arena {
 	size_t pagesize;          // Avoids us from having to compute the page size again when de-allocating the arena
 	struct termsize termsize; // Same
 	termstatefl termflags;
-	struct _scrstrbuf* strbuf;
+	struct _strbuf* strbuf;
 	struct scrbuf* pbuf;
 	struct scrbuf* vbuf;
 };

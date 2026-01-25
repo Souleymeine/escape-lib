@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
+
 #include <stdio.h>
 
 #include "screen.h"
