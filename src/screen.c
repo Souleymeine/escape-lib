@@ -1,10 +1,10 @@
 #include <stdbit.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <uchar.h>
 #include <unistd.h>
 
+#include "esqsec.h"
 #include "grapheme.h"
 #if __unix__
 #include <sys/mman.h>
@@ -206,31 +206,29 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 {
 	const enum clrfmt fmt = isbg ? scr->pbuf->cellmetas[cell_idx].bg_clrfmt : scr->pbuf->cellmetas[cell_idx].fg_clrfmt;
 	switch (fmt) {
-		case CELL_CLRFMT_CODE:
-			char clr_code_seq[8];
-			const uchar clr_code         = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
-			const size_t clr_code_seqlen = sprintf(clr_code_seq, CSI "%hhum", clr_code);
-			strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
-			break;
-		case CELL_CLRFMT_RGB:
-			char clr_rgb_seq[64];
-			const struct rgb clr_rgb = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
-			const size_t clr_rgb_seqlen
-				= sprintf(clr_rgb_seq, CSI "%c8;2;%hhu;%hhu;%hhum", isbg ? '4' : '3', clr_rgb.r, clr_rgb.g, clr_rgb.b);
-			strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
-			break;
-		case CELL_CLRFMT_ID:
-			char clr_id_seq[32];
-			const u8 clr_id            = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
-			const size_t clr_id_seqlen = sprintf(clr_id_seq, CSI "%c8;5;%hhum", isbg ? '4' : '3', clr_id);
-			strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
-			break;
+	case CELL_CLRFMT_CODE:
+		char clr_code_seq[U8_PARAM_SEQLEN(1)];
+		const uchar clr_code         = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
+		const size_t clr_code_seqlen = paramu8seq(clr_code_seq, (uint8_t[]){clr_code}, 1);
+		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
+		break;
+	case CELL_CLRFMT_RGB:
+		char clr_rgb_seq[5 + U8_PARAM_SEQLEN(3)];
+		const struct rgb clr_rgb    = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
+		const size_t clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (uint8_t[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5);
+		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
+		break;
+	case CELL_CLRFMT_ID:
+		char clr_id_seq[5 + U8_PARAM_SEQLEN(1)];
+		const u8 clr_id            = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
+		const size_t clr_id_seqlen = paramu8seq(clr_id_seq, (uint8_t[]){isbg ? 48 : 38, 5, clr_id}, 3);
+		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
+		break;
 	}
 }
 
 
 // TODO : Allow for saving strbuf to any file
-// Remove calls to the printf family functions
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * --------------------- -- */
@@ -254,8 +252,9 @@ bool srefresh(screen* scr)
 			strbufadd(&scr->strbuf, "\n", 1);
 		} else if (col != last_col + 1 || row != last_row) {
 			// TODO : remove calls to stdio
-			char mvseq[16];
-			const size_t mvseq_len = sprintf(mvseq, CSI "%d;%dH", row + 1, col + 1);
+			char mvseq[2 + U16_PARAM_SEQLEN(2)];
+			const size_t mvseq_len = seqcat(
+				mvseq, (struct seqel[]){SEQ_STRL(CSI), SEQ_U16(row + 1), SEQ_CHR(';'), SEQ_U16(col + 1), SEQ_CHR('H')}, 5);
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
@@ -299,8 +298,10 @@ bool srefresh(screen* scr)
 
 inline enum escerr sgetcorderr(const screen* scr, u16 x, u16 y)
 {
-	if (x > scr->termsize.cols) return ESC_ERR_COORD_X;
-	if (y > scr->termsize.rows) return ESC_ERR_COORD_Y;
+	if (x > scr->termsize.cols)
+		return ESC_ERR_COORD_X;
+	if (y > scr->termsize.rows)
+		return ESC_ERR_COORD_Y;
 	return ESC_OK;
 }
 
