@@ -4,16 +4,6 @@
 
 #include "_escdef.h"
 
-// Freestanding implementation of memcpy for strings.
-// Copies N bytes of SRC to DEST and returns N
-static inline size_t strcpy(char* restrict dest, const char* restrict src, size_t n)
-{
-	for (size_t i = 0; i < n; ++i) {
-		dest[i] = src[i];
-	}
-	return n;
-}
-
 // From https://stackoverflow.com/questions/9721042/count-number-of-digits-which-method-is-most-efficient/9721401#9721401
 uchar cntdigits(u16 n)
 {
@@ -35,26 +25,25 @@ static size_t utostr(char* restrict dest, uint16_t n)
 	return digits;
 }
 
-size_t seqlen(const struct seqslice* slices, size_t n)
+static inline size_t strcpy(char* restrict dest, const char* restrict src, size_t n)
 {
-	size_t len = 0;
 	for (size_t i = 0; i < n; ++i) {
-		switch (slices[i].type) {
-		case FMTSPEC_STR:  len += slices[i].str.len; break;
-		case FMTSPEC_UINT: len += cntdigits(slices[i].uint); break;
-		}
+		dest[i] = src[i];
 	}
-	return len;
+	return n;
 }
 
-void seqcat(char* restrict dest, const struct seqslice* slices, size_t n)
+size_t seqcat(char* restrict dest, const struct seqslice* restrict slices, size_t n)
 {
-	size_t offset = 0;
+	size_t ofst = 0;
 	for (size_t i = 0; i < n; ++i) {
 		switch (slices[i].type) {
-		case FMTSPEC_STR:  offset += strcpy(dest + offset, slices[i].str.buf, slices[i].str.len); break;
-		case FMTSPEC_UINT: offset += utostr(dest + offset, slices[i].uint); break;
+		case FMT_STR:  ofst += strcpy(dest + ofst, slices[i].str.buf, slices[i].str.len); break;
+		case FMT_U16:  ofst += utostr(dest + ofst, slices[i].uint16); break;
+		case FMT_U8:   ofst += utostr(dest + ofst, (u8)slices[i].uint8); break;
+		case FMT_CHAR: dest[ofst++] = slices[i].chr; break;
 		}
 	}
+	return ofst;
 }
 
