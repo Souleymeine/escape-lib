@@ -5,8 +5,7 @@
 #include <unistd.h>
 #endif
 
-#include <stdio.h>
-
+#include "esqsec.h"
 #include "screen.h"
 #include "terminal.h"
 
@@ -77,9 +76,12 @@ int set_termflags(termstatefl flags)
 	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
 
-	printf(CSI "?1049%c", flags & TERM_ALTBUF ? 'h' : 'l');
-	printf(CSI "?25%c", flags & TERM_HIDE_CURSOR ? 'l' : 'h');
-	fflush(stdout);
+	char seq[14];
+	const size_t seqlen = seqcat(seq,
+	                             (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
+	                                              SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
+	                             6);
+	print(seq, seqlen);
 
 	s_flags = flags;
 	return 0;
@@ -108,6 +110,21 @@ const HANDLE* get_g_stdout_hndl()
 }
 #endif
 
+bool print(const char* restrict buf, size_t len)
+{
+	long bytes_written;
+#if __unix__
+	bytes_written = write(STDOUT_FILENO, buf, len);
+	if (bytes_written == -1 || bytes_written != (long)len) {
+		return true;
+	}
+#elif _WIN32
+	if (WriteConsole(stdout_hndl, buf, &bytes_written, nullptr) || bytes_written != (long)len) {
+		return true;
+	}
+#endif
+	return false;
+}
 
 void cleanup_term()
 {
@@ -115,11 +132,9 @@ void cleanup_term()
 	set_termflags(0);
 
 #if _WIN32
-
 	SetConsoleOutputCP(s_og_output_cp);
 	SetConsoleMode(stdout_hndl, s_og_stdout_mode);
 	SetConsoleMode(stdin_hndl, s_og_stdin_mode);
-
 #endif
 }
 

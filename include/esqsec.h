@@ -29,8 +29,8 @@ struct seqel {
 #define U8_MAX_DIGITS  3
 
 // Useful to allocate enough memory for a sequence given the amount of parameters
-#define U8_PARAM_SEQLEN(n)  (2 + n * U8_MAX_DIGITS + n)  // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + m)
-#define U16_PARAM_SEQLEN(n) (2 + n * U16_MAX_DIGITS + n) // same here
+#define U8_WORST_PARAMSEQ_LEN(n)  (2 + n * U8_MAX_DIGITS + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
+#define U16_WORST_PARAMSEQ_LEN(n) (2 + n * U16_MAX_DIGITS + n) // same here
 
 #define SEQ_STR(s, l) {.type = FMT_STR, .str.buf = s, .str.len = l}
 // FOR STRING LITERALS ONLY!
@@ -46,14 +46,14 @@ unsigned char cntdigits(uint16_t n);
 size_t seqcat(char* restrict dest, const struct seqel* restrict elements, size_t n);
 
 /**
- * Fills a sequence of fromat CSI p1;p2;...m with pn being a unsigned 16 bit integer
+ * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 16 bit integer
  * And returns the length of said sequence
  */
-size_t paramu8seq(char* restrict dest, const uint8_t* restrict params, size_t n);
+size_t paramu8seq(char* restrict dest, const uint8_t* restrict params, size_t n, char end);
 
 /**
- * Fills a sequence of fromat CSI p1;p2;...m with pn being a unsigned 8 bit integer (useful for style/color codes)
+ * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 8 bit integer (useful for style/color codes)
  * And returns the length of said sequence
  */
-size_t paramu16seq(char* restrict dest, const uint16_t* restrict params, size_t n);
+size_t paramu16seq(char* restrict dest, const uint16_t* restrict params, size_t n, char end);
 

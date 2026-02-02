@@ -23,6 +23,12 @@ void init_flags(termstatefl flags);
 /* Returns a pointer to the program's static terminal flags. */
 const termstatefl* get_termflags();
 
+/**
+ * Simple unbuffered cross platform console writer
+ * Returns `true` if len doesn't match how many bytes were written or if nothing was written, false otherwise.
+ * */
+bool print(const char* restrict buf, size_t len);
+
 /* If called bedore `init_term`/`init_flags`, stdscr will use a virtual screen by default. */
 void usevscr();
 

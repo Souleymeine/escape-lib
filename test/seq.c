@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 	printf("%.*s\n", (int)len, seq);
 
 	char paramseq[100];
-	const size_t paramseqlen = paramu8seq(paramseq, (uint8_t[]){48, 2, 125, 50, 25}, 5);
+	const size_t paramseqlen = paramu8seq(paramseq, (uint8_t[]){48, 2, 125, 50, 25}, 5, 'm');
 	printf("%.*s\n", (int)paramseqlen, paramseq);
 }
 

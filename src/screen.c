@@ -4,8 +4,6 @@
 #include <uchar.h>
 #include <unistd.h>
 
-#include "esqsec.h"
-#include "grapheme.h"
 #if __unix__
 #include <sys/mman.h>
 #elif _WIN32
@@ -15,7 +13,10 @@
 #endif
 
 #include "escdef.h"
+#include "esqsec.h"
+#include "grapheme.h"
 #include "screen.h"
+#include "terminal.h"
 #include "termsize.h"
 
 #include "_escdef.h"
@@ -207,21 +208,21 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 	const enum clrfmt fmt = isbg ? scr->pbuf->cellmetas[cell_idx].bg_clrfmt : scr->pbuf->cellmetas[cell_idx].fg_clrfmt;
 	switch (fmt) {
 	case CELL_CLRFMT_CODE:
-		char clr_code_seq[U8_PARAM_SEQLEN(1)];
+		char clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
 		const uchar clr_code         = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
-		const size_t clr_code_seqlen = paramu8seq(clr_code_seq, (uint8_t[]){clr_code}, 1);
+		const size_t clr_code_seqlen = paramu8seq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
 		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 		break;
 	case CELL_CLRFMT_RGB:
-		char clr_rgb_seq[5 + U8_PARAM_SEQLEN(3)];
+		char clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
 		const struct rgb clr_rgb    = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
-		const size_t clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (uint8_t[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5);
+		const size_t clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
 		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 		break;
 	case CELL_CLRFMT_ID:
-		char clr_id_seq[5 + U8_PARAM_SEQLEN(1)];
+		char clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
 		const u8 clr_id            = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
-		const size_t clr_id_seqlen = paramu8seq(clr_id_seq, (uint8_t[]){isbg ? 48 : 38, 5, clr_id}, 3);
+		const size_t clr_id_seqlen = paramu8seq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
 		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
 		break;
 	}
@@ -234,10 +235,11 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
  * --------------------- -- */
 bool srefresh(screen* scr)
 {
-	// TODO : test if filling the strbuf directly (without any temporary buffers) is more efficient
+	// TODO : Account for chainging termflags
+
 	strbufadd(&scr->strbuf, CSI "H", 2);
 	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
-	uint16_t last_col = 0, last_row = 0;
+	u16 last_col = 0, last_row = 0;
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (!scr->pbuf->cellmetas[i].is_visible) {
 			continue;
@@ -246,15 +248,14 @@ bool srefresh(screen* scr)
 		addclrtostrbuf(scr, i, true);
 		addclrtostrbuf(scr, i, false);
 
-		const uint16_t row = i / scr->termsize.cols;
-		const uint16_t col = i - row * scr->termsize.cols;
+		const u16 row = i / scr->termsize.cols;
+		const u16 col = i - row * scr->termsize.cols;
 		if (last_col == scr->termsize.cols - 1 && col == 0) {
 			strbufadd(&scr->strbuf, "\n", 1);
 		} else if (col != last_col + 1 || row != last_row) {
 			// TODO : remove calls to stdio
-			char mvseq[2 + U16_PARAM_SEQLEN(2)];
-			const size_t mvseq_len = seqcat(
-				mvseq, (struct seqel[]){SEQ_STRL(CSI), SEQ_U16(row + 1), SEQ_CHR(';'), SEQ_U16(col + 1), SEQ_CHR('H')}, 5);
+			char mvseq[U16_WORST_PARAMSEQ_LEN(2)];
+			const size_t mvseq_len = paramu16seq(mvseq, (u16[]){row + 1, col + 1}, 2, 'H');
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
@@ -274,19 +275,10 @@ bool srefresh(screen* scr)
 		last_row = row;
 	}
 
-	long bytes_written;
-	const ulong bytes_to_write = scr->strbuf->cursor;
+	if (print(scr->strbuf->buf, scr->strbuf->cursor)) {
+		return true;
+	}
 
-#if __unix__
-	bytes_written = write(STDOUT_FILENO, scr->strbuf->buf, bytes_to_write);
-	if (bytes_written == -1 || bytes_written != (long)bytes_to_write) {
-		return true;
-	}
-#elif _WIN32
-	if (WriteConsole(*get_g_stdout_hndl(), scr._strbuf.buf, &bytes_written, nullptr) || bytes_written != (long)bytes_to_write) {
-		return true;
-	}
-#endif
 	if (scr->vbuf != nullptr) {
 		scr->vbuf = scr->pbuf;
 	}
@@ -315,7 +307,7 @@ enum escerr ssetgphm(screen* restrict scr, const char* gphm, u16 x, u16 y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		const char32_t c32 = gphmtoc32((unsigned char*)gphm);
+		const char32_t c32 = gphmtoc32((uchar*)gphm);
 		if (!c32) {
 			return ESC_ERR_GPHM;
 		}
@@ -326,7 +318,7 @@ enum escerr ssetgphm(screen* restrict scr, const char* gphm, u16 x, u16 y)
 	return sgetcorderr(scr, x, y);
 }
 
-enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y)
+enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -337,7 +329,7 @@ enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint
 	}
 	return sgetcorderr(scr, x, y);
 }
-enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y)
+enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -348,7 +340,7 @@ enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint
 	}
 	return sgetcorderr(scr, x, y);
 }
-enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y)
+enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, u16 x, u16 y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
