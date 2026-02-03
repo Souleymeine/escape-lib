@@ -23,6 +23,7 @@ static UINT s_og_output_cp;
 
 static termstatefl s_flags    = 0;
 static bool S_STDSCR_USE_VSCR = false;
+static bool s_enabled_altbuf = false;
 
 screen* stdscr;
 
@@ -33,8 +34,6 @@ void usevscr()
 
 void init_term()
 {
-	stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, S_STDSCR_USE_VSCR);
-
 #if __unix__
 	tcgetattr(STDIN_FILENO, &s_termattr);
 #elif _WIN32
@@ -75,6 +74,13 @@ int set_termflags(termstatefl flags)
 	SetConsoleMode(stdin_hndl,
 	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
+
+	if (flags & TERM_ALTBUF) {
+		if (!s_enabled_altbuf) {
+			stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, S_STDSCR_USE_VSCR);
+		}
+		s_enabled_altbuf = true;
+	}
 
 	char seq[14];
 	const size_t seqlen = seqcat(seq,
