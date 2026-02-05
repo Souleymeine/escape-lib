@@ -22,15 +22,12 @@ static UINT s_og_output_cp;
 #endif
 
 static termstatefl s_flags    = 0;
-static bool S_STDSCR_USE_VSCR = false;
-static bool s_enabled_altbuf = false;
+static bool s_stdscr_use_vscr = false;
+static bool s_enabled_altbuf  = false;
 
 screen* stdscr;
 
-void usevscr()
-{
-	S_STDSCR_USE_VSCR = true;
-}
+void usevscr() { s_stdscr_use_vscr = true; }
 
 void init_term()
 {
@@ -77,7 +74,7 @@ int set_termflags(termstatefl flags)
 
 	if (flags & TERM_ALTBUF) {
 		if (!s_enabled_altbuf) {
-			stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, S_STDSCR_USE_VSCR);
+			stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, s_stdscr_use_vscr);
 		}
 		s_enabled_altbuf = true;
 	}
@@ -99,21 +96,12 @@ inline void init_flags(termstatefl flags)
 	set_termflags(flags);
 }
 
-const termstatefl* get_termflags()
-{
-	return &s_flags;
-}
+const termstatefl* get_termflags() { return &s_flags; }
 
 #if _WIN32
-const HANDLE* get_g_stdin_hndl()
-{
-	return &stdin_hndl;
-}
+const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
 
-const HANDLE* get_g_stdout_hndl()
-{
-	return &stdout_hndl;
-}
+const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
 #endif
 
 bool print(const char* restrict buf, size_t len)
@@ -134,7 +122,10 @@ bool print(const char* restrict buf, size_t len)
 
 void cleanup_term()
 {
-	freescr(stdscr);
+	// freescr(stdscr);
+	// Deallocating when ending the program is unnecessary, the OS will do it faster afterwards
+	// Fight me.
+	// TODO : get termfalgs when call init_term instead of setting 0
 	set_termflags(0);
 
 #if _WIN32

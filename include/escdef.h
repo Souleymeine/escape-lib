@@ -13,9 +13,6 @@
 #define MAX(x, y)          (x > y ? x : y)
 #define CLAMP(x, min, max) (x < min ? min : x > max ? max : x)
 
-// Control Sequence Introducer
-#define CSI "\x1b["
-
 /* Portable typed enums from C23.
  * expands to a regular enum if __STDC_VERSION__ < 202311L) */
 #if __STDC_VERSION__ >= 202311L
