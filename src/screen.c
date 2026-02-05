@@ -1,5 +1,3 @@
-#include <stdbit.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <uchar.h>
 #include <unistd.h>
@@ -22,7 +20,7 @@
 #include "_escdef.h"
 
 // Default values
-static size_t s_strbuf_init_size  = 131072; // 2^17
+static size_t s_strbuf_init_size  = 4096;
 static float s_strbuf_growth_rate = 1.5f;
 
 void scrmemargs(size_t new_init_strbuf_size, float new_strbuf_growth_rate)
@@ -129,6 +127,7 @@ screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 	arena->termflags = (scrflags & SCREEN_HOLD_TERMFLAGS) ? (scrflags & ~(SCREEN_HOLD_TERMFLAGS | SCREEN_USE_VIRTUAL)) : -1;
 	arena->pagesize  = arena_pagesize;
 	arena->termsize  = termsize;
+	// arena is 0 initialized -> arena->refreshed = false;
 
 	arena->strbuf = strbuf;
 	initstrbuf(arena->strbuf, strbuf_pagesize);
@@ -228,14 +227,13 @@ static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 	}
 }
 
-
 // TODO : Allow for saving strbuf to any file
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * --------------------- -- */
 bool srefresh(screen* scr)
 {
-	// TODO : Account for chainging termflags
+	// TODO : Account for changing termflags
 
 	strbufadd(&scr->strbuf, CSI "H", 2);
 	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
@@ -253,7 +251,6 @@ bool srefresh(screen* scr)
 		if (last_col == scr->termsize.cols - 1 && col == 0) {
 			strbufadd(&scr->strbuf, "\n", 1);
 		} else if (col != last_col + 1 || row != last_row) {
-			// TODO : remove calls to stdio
 			char mvseq[U16_WORST_PARAMSEQ_LEN(2)];
 			const size_t mvseq_len = paramu16seq(mvseq, (u16[]){row + 1, col + 1}, 2, 'H');
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
@@ -279,15 +276,20 @@ bool srefresh(screen* scr)
 		return true;
 	}
 
+	// TODO : vscr
+
 	if (scr->vbuf != nullptr) {
 		scr->vbuf = scr->pbuf;
 	}
 	scr->strbuf->cursor = 0;
 
+	scr->refreshed = true;
+
 	return false;
 }
 
 
+// TODO : WTF
 inline enum escerr sgetcorderr(const screen* scr, u16 x, u16 y)
 {
 	if (x > scr->termsize.cols)
@@ -325,7 +327,7 @@ enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 		scr->pbuf->cellmetas[idx].is_visible = true;
 		scr->pbuf->cellmetas[idx].bg_clrfmt  = clr.fmt;
 
-		scr->pbuf->bg_clrs[idx] = clr.value;
+		scr->pbuf->bg_clrs[idx] = clr.val;
 	}
 	return sgetcorderr(scr, x, y);
 }
@@ -336,7 +338,7 @@ enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 		scr->pbuf->cellmetas[idx].is_visible = true;
 		scr->pbuf->cellmetas[idx].fg_clrfmt  = clr.fmt;
 
-		scr->pbuf->fg_clrs[idx] = clr.value;
+		scr->pbuf->fg_clrs[idx] = clr.val;
 	}
 	return sgetcorderr(scr, x, y);
 }
@@ -348,8 +350,8 @@ enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termc
 		scr->pbuf->cellmetas[idx].bg_clrfmt  = bgclr.fmt;
 		scr->pbuf->cellmetas[idx].fg_clrfmt  = fgclr.fmt;
 
-		scr->pbuf->bg_clrs[idx] = bgclr.value;
-		scr->pbuf->fg_clrs[idx] = fgclr.value;
+		scr->pbuf->bg_clrs[idx] = bgclr.val;
+		scr->pbuf->fg_clrs[idx] = fgclr.val;
 	}
 	return sgetcorderr(scr, x, y);
 }

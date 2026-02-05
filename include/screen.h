@@ -15,13 +15,13 @@ struct rgb {
 };
 
 // TODO : find a way to make clang-format inline this macro
-#define CLR_RGB(r, g, b)                                 \
-	((struct termclr){                                   \
-		.fmt = CELL_CLRFMT_RGB, .value.rgb = {r, g, b} \
-    })
-#define CLR_ID(c) ((struct termclr){.fmt = CELL_CLRFMT_ID, .value.id = c})
+#define CLR_RGB(r, g, b)                               \
+	(struct termclr){                                 \
+		.fmt = CELL_CLRFMT_RGB, .val.rgb = {r, g, b} \
+    }
+#define CLR_ID(c) ((struct termclr){.fmt = CELL_CLRFMT_ID, .val.id = c})
 // see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
-#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = c + 30})
+#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = c + 30})
 
 enum ENUMTYPE(clrfmt, unsigned char) {
 	CELL_CLRFMT_CODE = 1,
@@ -37,7 +37,7 @@ union termclrval {
 
 struct termclr {
 	enum clrfmt fmt;
-	union termclrval value;
+	union termclrval val;
 };
 
 // Must fit in 1 byte! (8 bits max)
@@ -103,9 +103,11 @@ struct _strbuf {
 };
 
 struct _scr_arena {
+	bool refreshed;           // true if srefresh was called at least once with this screen
 	size_t pagesize;          // Avoids us from having to compute the page size again when de-allocating the arena
 	struct termsize termsize; // Same
 	termstatefl termflags;
+
 	struct _strbuf* strbuf;
 	struct scrbuf* pbuf;
 	struct scrbuf* vbuf;
@@ -167,8 +169,8 @@ extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = CLRCODE_BLACK})
-#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .value.code = CLRCODE_DEF})
+#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_DEF})
 
 #define getpbuf()       sgetpbuf(stdscr)
 #define getvbuf()       sgetvbuf(stdscr)
