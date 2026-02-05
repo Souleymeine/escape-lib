@@ -38,7 +38,6 @@ endif
 VERSION_NUMBER := $(MAJOR_VER).$(MINOR_VER).$(PATCH_VER)-$(PRE_RELEASE_VER)
 
 # ~~~ Directories ~~~
-include_dir := ./include
 build_dir   := ./build
 src_dir     := ./src
 test_dir    := ./test
@@ -65,7 +64,7 @@ else
 fsan := -fsanitize=address,leak,undefined
 endif
 
-BASE_FLAGS    := -std=c23 -Wall -Wextra -I$(include_dir)
+BASE_FLAGS    := -std=c23 -Wall -Wextra
 OBJ_FLAGS     := -MMD -MP -ffreestanding -c
 DEBUG_FLAGS   := -g$(DBG_VERB_LVL) -O0 -DDEBUG $(fsan)
 RELEASE_FLAGS := -O$(OPTIM_LVL) -Werror -DNDEBUG
@@ -126,16 +125,16 @@ libescape_g.so: $(dyn_debug_objs)
 # 1st suffix letter - [s]tatic | [d]ynamic
 # 2nd suffix letter - [d]ebug  | [r]elease
 test-%-sr: $(test_dir)/%.c libescape.a
-	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) $(LTO_FLAG) $< -o $@ $(lastword $^)
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) $(LTO_FLAG) $< -o $@ $(lastword $^) -lm
 
 test-%-sd: $(test_dir)/%.c libescape_g.a
-	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) $< -o $@ $(lastword $^)
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) $< -o $@ $(lastword $^) -lm
 
 test-%-dr: $(test_dir)/%.c libescape.so
-	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(RELEASE_FLAGS) $(TEMPS_FLAGS) $(STRIP_FLAG) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@ -lm
 
 test-%-dd: $(test_dir)/%.c libescape_g.so
-	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@
+	$(CC) $(USE_LD_FLAG) $(BASE_FLAGS) $(DEBUG_FLAGS) $(TEMPS_FLAGS) -Wl,-rpath=$(lastword $^) ./$(lastword $^) $< -o $@ -lm
 
 # ~~~ Pattern rules for running tests of all build types (the most useful of rules in this Makefile) ~~~
 run-%-sr: test-%-sr; ./$< $(arg)

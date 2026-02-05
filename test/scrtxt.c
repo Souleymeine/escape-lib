@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "screen.h"
-#include "terminal.h"
+#include "../include/screen.h"
+#include "../include/terminal.h"
 
 int main()
 {

@@ -16,9 +16,10 @@ struct rgb {
 
 // TODO : find a way to make clang-format inline this macro
 #define CLR_RGB(r, g, b)                               \
-	(struct termclr){                                 \
-		.fmt = CELL_CLRFMT_RGB, .val.rgb = {r, g, b} \
-    }
+	(struct termclr)                                   \
+	{                                                  \
+		.fmt = CELL_CLRFMT_RGB, .val.rgb = { r, g, b } \
+	}
 #define CLR_ID(c) ((struct termclr){.fmt = CELL_CLRFMT_ID, .val.id = c})
 // see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
 #define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = c + 30})
@@ -59,6 +60,9 @@ enum ENUMTYPE(clrcode, unsigned char) {
 	CLRCODE_DEF = 9,
 };
 
+#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_DEF})
+
 /**
  * Conceptually, a "screen buffer" represents the current/desired visual state of a terminal. Do not mix it up with a window.
  * Windows are composite by nature, screens are not and are fully opaque, plain, like a canvas. It may also hold terminal flags if
@@ -90,7 +94,7 @@ struct scrbuf {
 	union termclrval* fg_clrs;
 };
 
-struct scrstr_bufview {
+struct strbufview {
 	char* buf;
 	size_t size;
 };
@@ -115,6 +119,11 @@ struct _scr_arena {
 
 typedef struct _scr_arena screen;
 
+extern screen* stdscr;
+// IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
+#define stdscr stdscr
+
+
 /** Sets variables relative to the internal memory allocations of the library,
  * where scrstr refers to the screen string buffer, that is the buffer that will contain the string
  * which will be written to stdout to represent whatever screen you want to see with srefresh/refresh for stdscr (default) */
@@ -128,59 +137,55 @@ bool freescr(screen* scr);
 
 /** Draws the given screen with the smallest possible sequence based on previous states if available */
 bool srefresh(screen* scr);
+static inline bool refresh() { return srefresh(stdscr); }
 
 /** Returns a pointer to the physical buffer of the given screen. */
-static inline struct scrbuf* sgetpbuf(const screen* scr)
-{
-	return scr->pbuf;
-}
+static inline struct scrbuf* sgetpbuf(const screen* scr) { return scr->pbuf; }
+static inline struct scrbuf* getpbuf() { return sgetpbuf(stdscr); }
+
 /** Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
  * NULL/nullptr otherwise. */
-static inline struct scrbuf* sgetvbuf(const screen* scr)
+static inline struct scrbuf* sgetvbuf(const screen* scr) { return scr->vbuf; }
+static inline struct scrbuf* getvbuf() { return sgetvbuf(stdscr); }
+
+static inline struct strbufview sgetstrbufview(const screen* scr)
 {
-	return scr->vbuf;
+	return (struct strbufview){.buf = scr->strbuf->buf, .size = scr->strbuf->cursor};
 }
-static inline struct scrstr_bufview sgetstrbufview(const screen* scr)
-{
-	return (struct scrstr_bufview){.buf = scr->strbuf->buf, .size = scr->strbuf->cursor};
-}
+static inline struct strbufview getstrbufview() { return sgetstrbufview(stdscr); }
 /** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
  * Use scorderr(x, y) to get more details. */
 long scordtoidx(const screen* scr, uint16_t x, uint16_t y);
+static inline long cordtoidx(uint16_t x, uint16_t y) { return scordtoidx(stdscr, x, y); }
 
 /** Returns flags of cordbounderrs given x and y. */
 enum escerr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
+static inline enum escerr getcorderr(uint16_t x, uint16_t y) { return sgetcorderr(stdscr, x, y); }
 
 /** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
  * Returns flags of cordbounderrs given x and y. */
 enum escerr ssetgphm(screen* restrict scr, const char* gphm, uint16_t x, uint16_t y);
+static inline enum escerr setgphm(const char* gphm, uint16_t x, uint16_t y) { return ssetgphm(stdscr, gphm, x, y); }
 
 /** Sets the given bg color at (x, y) */
 enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
+static inline enum escerr setbgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetbgclr(stdscr, clr, x, y); }
+
 /** Sets the given fg color at (x, y) */
 enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
+static inline enum escerr setfgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetfgclr(stdscr, clr, x, y); }
+
 /** Sets the given fg and bg colors at (x, y) */
 enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
+static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y)
+{
+	return ssetclrpair(stdscr, bgclr, fgclr, x, y);
+}
 
 /** Calls ssetgphm for each grapheme in the string based from the fitst one */
 enum escerr saddstr(screen* restrict scr, const char* str, size_t strlen, uint16_t x, uint16_t y);
-
-extern screen* stdscr;
-// IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
-#define stdscr stdscr
-
-#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_BLACK})
-#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_DEF})
-
-#define getpbuf()       sgetpbuf(stdscr)
-#define getvbuf()       sgetvbuf(stdscr)
-#define getstrbufview() sgetstrbufview(stdscr)
-#define refresh()       srefresh(stdscr)
-#define corderr(...)    scorderr(stdscr, __VA_ARGS__)
-#define setgphm(...)    ssetgphm(stdscr, __VA_ARGS__)
-#define cordtoidx(...)  scordtoidx(stdscr, __VA_ARGS__)
-#define setfgclr(...)   ssetfgclr(stdscr, __VA_ARGS__)
-#define setbgclr(...)   ssetbgclr(stdscr, __VA_ARGS__)
-#define setclrpair(...) ssetclrpair(stdscr, __VA_ARGS__)
-#define addstr(...)     saddstr(stdscr, __VA_ARGS__)
+static inline enum escerr addstr(const char* str, size_t strlen, uint16_t x, uint16_t y)
+{
+	return saddstr(stdscr, str, strlen, x, y);
+}
 

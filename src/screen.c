@@ -10,14 +10,13 @@
 #include "terminal.h"
 #endif
 
-#include "escdef.h"
-#include "esqsec.h"
-#include "grapheme.h"
-#include "screen.h"
-#include "terminal.h"
-#include "termsize.h"
-
-#include "_escdef.h"
+#include "../include/_escdef.h"
+#include "../include/escdef.h"
+#include "../include/escseq.h"
+#include "../include/grapheme.h"
+#include "../include/screen.h"
+#include "../include/terminal.h"
+#include "../include/termsize.h"
 
 // Default values
 static size_t s_strbuf_init_size  = 4096;
@@ -202,7 +201,7 @@ static inline void strbufadd(struct _strbuf** strbuf, const char* str, size_t st
 	(*strbuf)->cursor += strlen;
 }
 
-static inline void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
+static void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 {
 	const enum clrfmt fmt = isbg ? scr->pbuf->cellmetas[cell_idx].bg_clrfmt : scr->pbuf->cellmetas[cell_idx].fg_clrfmt;
 	switch (fmt) {

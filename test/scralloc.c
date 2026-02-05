@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "screen.h"
-#include "termsize.h"
+#include "../include/screen.h"
+#include "../include/termsize.h"
 
 static void test_scr(screen* scr, const char* msg)
 {

@@ -5,6 +5,11 @@
 
 #include "escdef.h"
 
+// Control Sequence Introducer
+#define CSI "\x1b["
+
+
+
 // TODO : Solve terminfo.
 
 struct seqel {
@@ -29,7 +34,8 @@ struct seqel {
 #define U8_MAX_DIGITS  3
 
 // Useful to allocate enough memory for a sequence given the amount of parameters
-#define U8_WORST_PARAMSEQ_LEN(n)  (2 + n * U8_MAX_DIGITS + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
+#define U8_WORST_PARAMSEQ_LEN(n)                                                                            \
+	(2 + n * U8_MAX_DIGITS + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
 #define U16_WORST_PARAMSEQ_LEN(n) (2 + n * U16_MAX_DIGITS + n) // same here
 
 #define SEQ_STR(s, l) {.type = FMT_STR, .str.buf = s, .str.len = l}

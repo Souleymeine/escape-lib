@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <uchar.h>
 
-#include "grapheme.h"
+#include "../include/grapheme.h"
 
-#include "_escdef.h"
+#include "../include/_escdef.h"
 
 enum cptype get_cptype(char8_t c)
 {

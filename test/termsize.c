@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "termsize.h"
+#include "../include/termsize.h"
 
 int main()
 {

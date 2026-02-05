@@ -1,8 +1,7 @@
-#include "layout.h"
+#include "../include/layout.h"
 
-#include "screen.h"
-
-#include "_escdef.h"
+#include "../include/_escdef.h"
+#include "../include/screen.h"
 
 /**
  * TODO : doc

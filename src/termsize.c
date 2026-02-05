@@ -7,7 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
-#include "termsize.h"
+#include "../include/termsize.h"
 
 #if _WIN32
 static inline RECT get_conwin_rect()

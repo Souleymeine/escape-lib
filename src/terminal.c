@@ -5,9 +5,9 @@
 #include <unistd.h>
 #endif
 
-#include "esqsec.h"
-#include "screen.h"
-#include "terminal.h"
+#include "../include/escseq.h"
+#include "../include/screen.h"
+#include "../include/terminal.h"
 
 
 #if __unix__
