@@ -3,9 +3,8 @@
 #include <stdio.h>
 #include <uchar.h>
 
-#include "../include/grapheme.h"
-
 #include "../include/_escdef.h"
+#include "../include/grapheme.h"
 
 enum cptype get_cptype(char8_t c)
 {
@@ -24,8 +23,11 @@ enum cptype get_cptype(char8_t c)
 	} else {
 		const uchar leading_ones = stdc_leading_ones_uc(c);
 		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
-			if (leading_ones == 1) return CP_CONTINUATION; // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
-			else if (leading_ones <= 4) return (enum cptype)leading_ones;
+			if (leading_ones == 1) {
+				return CP_CONTINUATION; // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
+			} else if (leading_ones <= 4) {
+				return (enum cptype)leading_ones;
+			}
 		}
 	}
 
@@ -34,16 +36,16 @@ enum cptype get_cptype(char8_t c)
 
 long gphm_cnt(const char* restrict str, size_t strlen)
 {
-	ulong cnt = 0;
+	ulong count = 0;
 
 	enum cptype type = CP_INVALID;
-	for (size_t i = 0; i < strlen; i += type, ++cnt) {
+	for (size_t i = 0; i < strlen; i += type, ++count) {
 		if ((type = get_cptype(str[i])) == CP_INVALID) {
 			return -1;
 		}
 	}
 
-	return cnt;
+	return count;
 }
 
 long get_inv_cp(const char* restrict str, size_t strlen)
