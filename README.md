@@ -1,6 +1,6 @@
 This project uses semantic versioning : https://semver.org/
 
-# NOT READY FOR USE. THERE IS ABSOLUTELY NO WARRANTY
+# NOT READY FOR USE. THERE IS ABSOLUTELY NO WARRANTY.
 
 ## Developpement scheme
 The project will use the `feature` / `bugfix` / `test` convetion for branch names but adds another one called "goal".
@@ -45,26 +45,36 @@ In the next branches.
 **cp** stands for **c**ode**p**oint
 **gphm** stands for **g**ra**ph**e**m**e
 
-Those two are ferequent in the library.
-They respectively refer to the smallest bit of information in a utf8 string (codepoint) and a group of multiple codepoints that make visual character up (grapheme)
+These two are ferequent in the library.
+They respectively refer to the smallest bit of information in a utf8 string (codepoint, a single byte) and a group of multiple codepoints which make a visual character up (grapheme): what we would *naturaly* refer to as a "character".
 
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
-- [ ] Use zig as a build system rather than make (painful, painful indeed after so many hours writing a Makefile, but necessary).
-    See https://youtu.be/i9nFvSpcCzo?si=yxOfo1hWYExjidIT.
-    "Replacing your dependency on make by zig, and now this new dependency also cross compiles", **marvelous**.
-- [ ] Cross platform terminal independant escape sequences management : [replacement for termcaps/terminfo](https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net)
+- [ ] Use zig as a build system rather than make (painful, painful indeed after so many hours writing a Makefile, but necessary). [See video](https://youtu.be/i9nFvSpcCzo?si=yxOfo1hWYExjidIT).
+    *"Replacing your dependency on (C)make by zig, and now this new dependency also cross compiles"*, **marvelous**.
+- [ ] Cross-platform terminal-independant escape sequences management : [replacement for termcaps/terminfo](https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net)
 - [ ] Asbtraction layer above device/kernel specific interaction mechanism with stdin/stdout and the console/tty itself (for instance, a crossplatform `getch`)
 - [ ] IO events and resizing.
-- [ ] Find the best algorithm for `refresh` (non-heuristic if possible)
-- [ ] "Immediate" mode, as opposed to retained mode when using `TERM_ALTBUF`.
+- [ ] Find the best algorithm for `srefresh` (non-heuristic if possible)
+- [ ] "Immediate" mode, as opposed to retained mode when using `TERM_ALTBUF`
 - [ ] UI layout (as en extension)
 - [ ] Image processing (as an extension)
-- [ ] Bindings for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal)
+- [ ] Bindings for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal) and implementation
 - [x] Limit the usage of the standard library to bit utilities (stdbit.h) and system calls (no C runtime, like malloc, printf, fopen, ...)
 - [ ] Better support for CJK characters, mostly full width characters
 - [ ] Support for combining diacritical marks, mostly arabic but also phonetics
 - [ ] Account for other terminal emulators on Windows other than *conhost* and *Terminal*
-- [ ] Multi-threaded screen rendering?
-
+- [ ] Support WASM for [Xterm.js](https://xtermjs.org/)
+- [ ] Support OpenGL/Vulkan surfaces
+- [ ] Parallel screen rendering?
+- [ ] 24bit color driver for Linux/BSD's tty?
+## After version 1.0.0 (stable)
+Bindings for
+- [ ] C++
+- [ ] Python
+- [ ] Zig
+- [ ] Rust
+- [ ] OCaml
+- [ ] Java
+- [ ] C#
