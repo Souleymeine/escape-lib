@@ -1,8 +1,7 @@
 #include <stdbit.h>
 
-#include "../include/escseq.h"
-
 #include "../include/_escdef.h"
+#include "../include/escseq.h"
 
 // From https://stackoverflow.com/questions/9721042/count-number-of-digits-which-method-is-most-efficient/9721401#9721401
 uchar cntdigits(u16 n)
