@@ -9,7 +9,6 @@
 #define CSI "\x1b["
 
 
-
 // TODO : Solve terminfo.
 
 struct seqel {
