@@ -43,6 +43,7 @@ In the next branches.
 
 ## Some naming conventions :
 **cp** stands for **c**ode**p**oint
+
 **gphm** stands for **g**ra**ph**e**m**e
 
 These two are ferequent in the library.

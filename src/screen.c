@@ -226,6 +226,32 @@ static void addclrtostrbuf(screen* scr, size_t cell_idx, bool isbg)
 	}
 }
 
+enum escerr sidxtocord(const screen* scr, size_t i, u16* x, u16* y)
+{
+	*y = i / scr->termsize.cols;
+	*x = i - *y * scr->termsize.cols;
+	(*x)++;
+	(*y)++;
+	return sgetcorderr(scr, *x, *y);
+}
+
+// Fills strbuf of scr with a blank str to clear the screen when refreshing
+static inline void sclear(screen* scr)
+{
+	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
+	for (size_t i = 0; i < cell_cnt; ++i) {
+		strbufadd(&scr->strbuf, " ", 1);
+	}
+	strbufadd(&scr->strbuf, CSI "H", 2);
+}
+
+bool sclearefresh(screen *scr) {
+	if (scr->refreshed) { // Won't clear if the screen has never been refreshed
+		sclear(scr);
+	}
+	return srefresh(scr);
+}
+
 // TODO : Allow for saving strbuf to any file
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
@@ -234,9 +260,8 @@ bool srefresh(screen* scr)
 {
 	// TODO : Account for changing termflags
 
-	strbufadd(&scr->strbuf, CSI "H", 2);
 	const size_t cell_cnt = scr->termsize.cols * scr->termsize.rows;
-	u16 last_col = 0, last_row = 0;
+	u16 last_x = 0, last_y = 0;
 	for (size_t i = 0; i < cell_cnt; ++i) {
 		if (!scr->pbuf->cellmetas[i].is_visible) {
 			continue;
@@ -245,13 +270,13 @@ bool srefresh(screen* scr)
 		addclrtostrbuf(scr, i, true);
 		addclrtostrbuf(scr, i, false);
 
-		const u16 row = i / scr->termsize.cols;
-		const u16 col = i - row * scr->termsize.cols;
-		if (last_col == scr->termsize.cols - 1 && col == 0) {
+		u16 x, y;
+		sidxtocord(scr, i, &x, &y);
+		if (last_x == scr->termsize.cols - 1 && x == 0) {
 			strbufadd(&scr->strbuf, "\n", 1);
-		} else if (col != last_col + 1 || row != last_row) {
+		} else if (x != last_x + 1 || y != last_y) {
 			char mvseq[U16_WORST_PARAMSEQ_LEN(2)];
-			const size_t mvseq_len = paramu16seq(mvseq, (u16[]){row + 1, col + 1}, 2, 'H');
+			const size_t mvseq_len = paramu16seq(mvseq, (u16[]){y, x}, 2, 'H');
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
@@ -267,8 +292,8 @@ bool srefresh(screen* scr)
 		if (cell_has_clr) {
 			strbufadd(&scr->strbuf, CSI "m", 3);
 		}
-		last_col = col;
-		last_row = row;
+		last_x = x;
+		last_y = y;
 	}
 
 	if (print(scr->strbuf->buf, scr->strbuf->cursor)) {
@@ -308,8 +333,10 @@ enum escerr ssetgphm(screen* restrict scr, const char* gphm, u16 x, u16 y)
 {
 	const long idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		const char32_t c32 = gphmtoc32((uchar*)gphm);
-		if (!c32) {
+		char32_t c32;
+		if (gphm[0] == '\0') { // empty string
+			c32 = 0;
+		} else if (!(c32 = gphmtoc32((uchar*)gphm))) {
 			return ESC_ERR_GPHM;
 		}
 		scr->pbuf->cellmetas[idx].is_visible = true;

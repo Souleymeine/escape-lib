@@ -139,6 +139,12 @@ bool freescr(screen* scr);
 bool srefresh(screen* scr);
 static inline bool refresh() { return srefresh(stdscr); }
 
+bool sclearefresh(screen* scr);
+static inline bool clearefresh() { return sclearefresh(stdscr); }
+
+enum escerr sidxtocord(const screen* scr, size_t i, uint16_t* x, uint16_t* y);
+static inline enum escerr idxtocord(size_t i, uint16_t* x, uint16_t* y) { return sidxtocord(stdscr, i, x, y); }
+
 /** Returns a pointer to the physical buffer of the given screen. */
 static inline struct scrbuf* sgetpbuf(const screen* scr) { return scr->pbuf; }
 static inline struct scrbuf* getpbuf() { return sgetpbuf(stdscr); }
