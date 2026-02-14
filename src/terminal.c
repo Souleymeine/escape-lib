@@ -5,6 +5,7 @@
 #include <unistd.h>
 #endif
 
+#include "../include/_escdef.h"
 #include "../include/escseq.h"
 #include "../include/screen.h"
 #include "../include/terminal.h"
@@ -80,7 +81,7 @@ int set_termflags(termstatefl flags)
 	}
 
 	char seq[14];
-	const size_t seqlen = seqcat(seq,
+	const usize seqlen = seqcat(seq,
 	                             (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
 	                                              SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
 	                             6);
@@ -104,7 +105,7 @@ const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
 const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
 #endif
 
-bool print(const char* restrict buf, size_t len)
+bool print(const char* restrict buf, usize len)
 {
 	long bytes_written;
 #if __unix__
