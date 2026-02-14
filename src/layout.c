@@ -18,7 +18,7 @@ void ref_topleft(const struct anchor* anc, enum h_offpref h_off, enum v_offpref 
 {
 	if (anc->v_coordsem == TOP && anc->h_coordsem == LEFT) {
 		return; // Nothing to do
-	}
+	} 
 
 	const uchar alignments = anc->h_coordsem & anc->v_coordsem;
 

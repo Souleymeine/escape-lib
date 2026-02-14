@@ -86,10 +86,10 @@ int set_termflags(termstatefl flags)
 	                                             SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
 	                            6);
 	print(seq, seqlen);
- 
+
 	s_flags = flags;
 	return 0;
-}
+} 
 
 inline void init_flags(termstatefl flags)
 {
