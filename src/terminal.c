@@ -89,7 +89,7 @@ int set_termflags(termstatefl flags)
 
 	s_flags = flags;
 	return 0;
-} 
+}
 
 inline void init_flags(termstatefl flags)
 {

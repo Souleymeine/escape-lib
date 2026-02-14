@@ -12,13 +12,13 @@ static inline char calc_correction(u16 smaller_len, u16 bigger_len, uchar offpre
 	return offset * (offset == offpref); // Return 0 if the offcenter is already matching offpref
 }
 
-static inline u16 calc_middle_point(u16 point, u16 len, uchar offpref) {return len / 2 + calc_correction(len, point, offpref); }
+static inline u16 calc_middle_point(u16 point, u16 len, uchar offpref) { return len / 2 + calc_correction(len, point, offpref); }
 
 void ref_topleft(const struct anchor* anc, enum h_offpref h_off, enum v_offpref v_off, u16* restrict x, u16* restrict y)
 {
 	if (anc->v_coordsem == TOP && anc->h_coordsem == LEFT) {
 		return; // Nothing to do
-	} 
+	}
 
 	const uchar alignments = anc->h_coordsem & anc->v_coordsem;
 
