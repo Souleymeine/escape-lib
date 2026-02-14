@@ -82,11 +82,11 @@ int set_termflags(termstatefl flags)
 
 	char seq[14];
 	const usize seqlen = seqcat(seq,
-	                             (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
-	                                              SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
-	                             6);
+	                            (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
+	                                             SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
+	                            6);
 	print(seq, seqlen);
-
+ 
 	s_flags = flags;
 	return 0;
 }

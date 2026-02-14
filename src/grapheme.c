@@ -32,7 +32,7 @@ enum cptype get_cptype(c8 c)
 	return CP_INVALID;
 }
 
-long gphm_cnt(const char* restrict str, usize strlen)
+isize gphm_cnt(const char* restrict str, usize strlen)
 {
 	ulong count = 0;
 
@@ -46,7 +46,7 @@ long gphm_cnt(const char* restrict str, usize strlen)
 	return count;
 }
 
-long get_inv_cp(const char* restrict str, usize strlen)
+isize get_inv_cp(const char* restrict str, usize strlen)
 {
 	for (usize i = 0; i < strlen; ++i) {
 		if (get_cptype(str[i]) == CP_INVALID) {
@@ -77,8 +77,8 @@ usize c32togphm(c32 c, char* restrict gphm)
 	const usize c32_bw = stdc_bit_width(c);
 	const usize cp_cnt = c32_bw < 8 ? 1 : c32_bw / UCHAR_WIDTH; // ASCII only has 7 (< 8) bits but counts as 1
 	for (usize i = 0; i < cp_cnt; ++i) {
-		const c32 bitmask = 0x000000ff << (i * UCHAR_WIDTH);
-		gphm[cp_cnt - i - 1]   = (c & bitmask) >> (i * UCHAR_WIDTH);
+		const c32 bitmask    = 0x000000ff << (i * UCHAR_WIDTH);
+		gphm[cp_cnt - i - 1] = (c & bitmask) >> (i * UCHAR_WIDTH);
 	}
 	return cp_cnt;
 }

@@ -32,7 +32,7 @@ void ref_termsize(struct termsize* ref)
 	ref->rows = termsize.ws_row;
 	ref->cols = termsize.ws_col;
 	ref->xpix = termsize.ws_xpixel;
-	ref->ypix = termsize.ws_ypixel;
+	ref->ypix = termsize.ws_ypixel; 
 
 #elif _WIN32
 

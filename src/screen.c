@@ -18,7 +18,7 @@
 #include "../include/termsize.h"
 
 // Default values
-static usize s_strbuf_init_size  = 4096;
+static usize s_strbuf_init_size   = 4096;
 static float s_strbuf_growth_rate = 1.5f;
 
 void scrmemargs(usize new_init_strbuf_size, float new_strbuf_growth_rate)
@@ -69,8 +69,7 @@ static inline usize alignptr(usize addr, usize align)
 	// https://en.wikipedia.org/wiki/Data_structure_alignment
 	return (addr + (align - 1)) & -align;
 }
-#define OFFSET_PTR_BY(baseaddr, offset, ptrbasetype)                               \
-	((ptrbasetype*)alignptr((usize)(baseaddr) + offset, alignof(ptrbasetype)))
+#define OFFSET_PTR_BY(baseaddr, offset, ptrbasetype) ((ptrbasetype*)alignptr((usize)(baseaddr) + offset, alignof(ptrbasetype)))
 
 #define WORST_SIZEOF(type) (sizeof(type) + alignof(type))
 
@@ -98,8 +97,8 @@ static inline void initstrbuf(struct _strbuf* strbuf, usize pagesize)
 
 screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 {
-	const struct termsize termsize = get_termsize();
-	const usize cell_cnt          = termsize.cols * termsize.rows;
+	const struct termsize size = get_termsize();
+	const usize cell_cnt       = size.cols * size.rows;
 
 	const usize charssize = cell_cnt * sizeof(c32);
 	const usize clrssize  = cell_cnt * sizeof(union termclrval);
@@ -124,7 +123,7 @@ screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 
 	arena->termflags = (scrflags & SCREEN_HOLD_TERMFLAGS) ? (scrflags & ~(SCREEN_HOLD_TERMFLAGS | SCREEN_USE_VIRTUAL)) : -1;
 	arena->pagesize  = arena_pagesize;
-	arena->termsize  = termsize;
+	arena->termsize  = size;
 	// arena is 0 initialized -> arena->refreshed = false;
 
 	arena->strbuf = strbuf;
@@ -206,19 +205,19 @@ static void addclrtostrbuf(screen* scr, usize cell_idx, bool isbg)
 	switch (fmt) {
 	case CELL_CLRFMT_CODE:
 		char clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
-		const uchar clr_code         = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
+		const uchar clr_code        = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
 		const usize clr_code_seqlen = paramu8seq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
 		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 		break;
 	case CELL_CLRFMT_RGB:
 		char clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
-		const struct rgb clr_rgb    = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
+		const struct rgb clr_rgb   = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
 		const usize clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
 		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 		break;
 	case CELL_CLRFMT_ID:
 		char clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
-		const u8 clr_id            = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
+		const u8 clr_id           = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
 		const usize clr_id_seqlen = paramu8seq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
 		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
 		break;
@@ -244,7 +243,8 @@ static inline void sclear(screen* scr)
 	strbufadd(&scr->strbuf, CSI "H", 2);
 }
 
-bool sclearefresh(screen *scr) {
+bool sclearefresh(screen* scr)
+{
 	if (scr->refreshed) { // Won't clear if the screen has never been refreshed
 		sclear(scr);
 	}
