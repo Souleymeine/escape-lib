@@ -4,11 +4,12 @@
 
 #include "../include/screen.h"
 #include "../include/terminal.h"
+#include "../include/utf.h"
 
 int main(int argc, char* argv[])
 {
 	init_flags(TERM_NO_ECHO | TERM_HIDE_CURSOR | TERM_ALTBUF);
-	const char* gphm = (argc == 1) ? "é" : argv[1];
+	const char32_t cp = (argc == 1) ? U'é' : utf8tocp(UTF8(argv[1]));
 
 	const struct termsize size = get_termsize();
 	const float increment      = 0.05f;
@@ -16,13 +17,13 @@ int main(int argc, char* argv[])
 	do {
 		for (uint16_t y = 1; y <= size.rows; ++y) {
 			for (uint16_t x = 1; x <= size.cols; ++x) {
-				setgphm(gphm, x, y);
+				setcp(cp, x, y);
 				setclrpair(CLR_RGB(x * 255 / size.cols, y * 255 / size.rows, ((sin(progress) + 1) / 2) * 255),
 				           CLR_CODE(CLRCODE_YELLOW), x, y);
 			}
 		}
 		progress += increment;
-		refresh();
+		refresh(false);
 	} while (getchar() != '\x1b');
 
 

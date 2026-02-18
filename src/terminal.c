@@ -80,12 +80,12 @@ int set_termflags(termstatefl flags)
 		s_enabled_altbuf = true;
 	}
 
-	char seq[14];
+	c8 seq[14];
 	const usize seqlen = seqcat(seq,
 	                            (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
 	                                             SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
 	                            6);
-	print(seq, seqlen);
+	termprint(seq, seqlen);
 
 	s_flags = flags;
 	return 0;
@@ -105,7 +105,7 @@ const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
 const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
 #endif
 
-bool print(const char* restrict buf, usize len)
+bool termprint(const c8* restrict buf, usize len)
 {
 	long bytes_written;
 #if __unix__

@@ -48,17 +48,17 @@ struct seqel {
 unsigned char cntdigits(uint16_t n);
 
 /**  */
-size_t seqcat(char* restrict dest, const struct seqel* restrict elements, size_t n);
+size_t seqcat(char8_t* restrict dest, const struct seqel* restrict elements, size_t n);
 
 /**
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 16 bit integer
  * And returns the length of said sequence
  */
-size_t paramu8seq(char* restrict dest, const uint8_t* restrict params, size_t n, char end);
+size_t paramu8seq(char8_t* restrict dest, const uint8_t* restrict params, size_t n, char end);
 
 /**
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 8 bit integer (useful for style/color codes)
  * And returns the length of said sequence
  */
-size_t paramu16seq(char* restrict dest, const uint16_t* restrict params, size_t n, char end);
+size_t paramu16seq(char8_t* restrict dest, const uint16_t* restrict params, size_t n, char end);
 

@@ -14,7 +14,7 @@ uchar cntdigits(u16 n)
 }
 
 // Puts ASCII representation of unsigned int N into DEST and returns the number of digits of N (`cntdigits(n)`)
-static usize utostr(char* restrict dest, u16 n)
+static usize utostr(c8* restrict dest, u16 n)
 {
 	const usize digits = cntdigits(n);
 	for (usize i = 0; i < digits; ++i) {
@@ -24,7 +24,7 @@ static usize utostr(char* restrict dest, u16 n)
 	return digits;
 }
 
-static inline usize strcpy(char* restrict dest, const char* restrict src, usize n)
+static inline usize strcpy(c8* restrict dest, const char* restrict src, usize n)
 {
 	for (usize i = 0; i < n; ++i) {
 		dest[i] = src[i];
@@ -32,7 +32,7 @@ static inline usize strcpy(char* restrict dest, const char* restrict src, usize 
 	return n;
 }
 
-usize seqcat(char* restrict dest, const struct seqel* restrict elements, usize n)
+usize seqcat(c8* restrict dest, const struct seqel* restrict elements, usize n)
 {
 	usize ofst = 0;
 	for (usize i = 0; i < n; ++i) {
@@ -54,7 +54,7 @@ static inline void parambitsbound(struct seqel* restrict elements, usize len, ch
 	elements[len - 1] = SEQ_CHR(end);
 }
 
-usize paramu8seq(char* restrict dest, const u8* restrict params, usize n, char end)
+usize paramu8seq(c8* restrict dest, const u8* restrict params, usize n, char end)
 {
 	const usize el_cnt = PARAM_SLICE_COUNT(n);
 	struct seqel elemnts[el_cnt];
@@ -65,7 +65,7 @@ usize paramu8seq(char* restrict dest, const u8* restrict params, usize n, char e
 	return seqcat(dest, elemnts, el_cnt);
 }
 
-usize paramu16seq(char* restrict dest, const u16* restrict params, usize n, char end)
+usize paramu16seq(c8* restrict dest, const u16* restrict params, usize n, char end)
 {
 	const usize el_cnt = PARAM_SLICE_COUNT(n);
 	struct seqel elemnts[el_cnt];

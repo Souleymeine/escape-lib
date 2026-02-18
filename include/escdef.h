@@ -1,12 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#if __STDC_VERSION__ >= 202311L
 #include <uchar.h>
-#endif
-
-#define MAX_GPHM_CPTS  4
-#define MAX_GPHM_WIDTH UINT32_WIDTH
 
 // Used frequently when manipulating coordinates
 #define MIN(x, y)          (x < y ? x : y)
@@ -64,6 +59,6 @@ enum ENUMTYPE(escerr, unsigned char) {
 	ESC_ERR_COORD_X,
 	ESC_ERR_COORD_Y,
 	ESC_ERR_UTF8,
-	ESC_ERR_GPHM,
+	ESC_ERR_CP,
 };
 

@@ -15,37 +15,30 @@ struct rgb {
 };
 
 // TODO : find a way to make clang-format inline this macro
-#define CLR_RGB(r, g, b)                               \
-	(struct termclr)                                   \
-	{                                                  \
-		.fmt = CELL_CLRFMT_RGB, .val.rgb = { r, g, b } \
+#define CLR_RGB(r, g, b)                          \
+	(struct termclr)                              \
+	{                                             \
+		.tag = CLRTAG_RGB, .val.rgb = { r, g, b } \
 	}
-#define CLR_ID(c) ((struct termclr){.fmt = CELL_CLRFMT_ID, .val.id = c})
+#define CLR_ID(c) ((struct termclr){.tag = CLRTAG_ID, .val.id = c})
 // see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
-#define CLR_CODE(c) ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = c + 30})
+#define CLR_CODE(c) ((struct termclr){.tag = CLRTAG_CODE, .val.code = c + 30})
 
-enum ENUMTYPE(clrfmt, unsigned char) {
-	CELL_CLRFMT_CODE = 1,
-	CELL_CLRFMT_RGB,
-	CELL_CLRFMT_ID, // 3 bits max 0b100
+enum ENUMTYPE(clrtag, unsigned char) {
+	CLRTAG_CODE = 1,
+	CLRTAG_RGB,
+	CLRTAG_ID, // 2 bits max 0b11
 };
 
-union termclrval {
-	unsigned char code;
-	struct rgb rgb;
+union clrval {
+	uint8_t code;
 	uint8_t id;
+	struct rgb rgb;
 };
 
 struct termclr {
-	enum clrfmt fmt;
-	union termclrval val;
-};
-
-// Must fit in 1 byte! (8 bits max)
-struct cellmeta {
-	enum clrfmt fg_clrfmt : 3;
-	enum clrfmt bg_clrfmt : 3;
-	bool is_visible : 1;
+	enum clrtag tag;
+	union clrval val;
 };
 
 enum ENUMTYPE(clrcode, unsigned char) {
@@ -60,8 +53,17 @@ enum ENUMTYPE(clrcode, unsigned char) {
 	CLRCODE_DEF = 9,
 };
 
-#define DEF_SCR_BGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_BLACK})
-#define DEF_SCR_FGCLR ((struct termclr){.fmt = CELL_CLRFMT_CODE, .val.code = CLRCODE_DEF})
+#define DEF_SCR_BGCLR ((struct termclr){.tag = CLRTAG_CODE, .val.code = CLRCODE_BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.tag = CLRTAG_CODE, .val.code = CLRCODE_DEF})
+
+// TODO : convert to regular bit flags with a few helper functions
+// (bitfields don't have a well defined mem layout unfortunately)
+struct tagchar { // Must fit in 32 bits
+	bool visible : 1;
+	enum clrtag bgtag : 2;
+	enum clrtag fgtag : 2;
+	char32_t c : 21; // utf8 can't go past 2^21, 11 bits remain always unused even in utf32
+};
 
 /**
  * Conceptually, a "screen buffer" represents the current/desired visual state of a terminal. Do not mix it up with a window.
@@ -88,14 +90,13 @@ struct scrbuf {
 	struct termclr def_fg_clr;
 
 	// cell buffers
-	char32_t* chars;
-	struct cellmeta* cellmetas;
-	union termclrval* bg_clrs;
-	union termclrval* fg_clrs;
+	struct tagchar* tagschars; // 32bit bitfields
+	union clrval* bg_clrs;
+	union clrval* fg_clrs;
 };
 
 struct strbufview {
-	char* buf;
+	char8_t* buf;
 	size_t size;
 };
 
@@ -103,7 +104,7 @@ struct _strbuf {
 	size_t pagesize;
 	size_t bufsize;
 	size_t cursor;
-	char* buf;
+	char8_t* buf;
 };
 
 struct _scr_arena {
@@ -136,11 +137,8 @@ screen* newscr(struct termclr bg_clr, struct termclr fg_clr, termstatefl scrflag
 bool freescr(screen* scr);
 
 /** Draws the given screen with the smallest possible sequence based on previous states if available */
-bool srefresh(screen* scr);
-static inline bool refresh() { return srefresh(stdscr); }
-
-bool sclearefresh(screen* scr);
-static inline bool clearefresh() { return sclearefresh(stdscr); }
+bool srefresh(screen* scr, bool clear);
+static inline bool refresh(bool clear) { return srefresh(stdscr, clear); }
 
 enum escerr sidxtocord(const screen* scr, size_t i, uint16_t* x, uint16_t* y);
 static inline enum escerr idxtocord(size_t i, uint16_t* x, uint16_t* y) { return sidxtocord(stdscr, i, x, y); }
@@ -170,8 +168,8 @@ static inline enum escerr getcorderr(uint16_t x, uint16_t y) { return sgetcorder
 
 /** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
  * Returns flags of cordbounderrs given x and y. */
-enum escerr ssetgphm(screen* restrict scr, const char* gphm, uint16_t x, uint16_t y);
-static inline enum escerr setgphm(const char* gphm, uint16_t x, uint16_t y) { return ssetgphm(stdscr, gphm, x, y); }
+enum escerr ssetcp(screen* restrict scr, char32_t c, uint16_t x, uint16_t y);
+static inline enum escerr setcp(char32_t c, uint16_t x, uint16_t y) { return ssetcp(stdscr, c, x, y); }
 
 /** Sets the given bg color at (x, y) */
 enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
@@ -188,10 +186,13 @@ static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr,
 	return ssetclrpair(stdscr, bgclr, fgclr, x, y);
 }
 
+enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y);
+static inline enum escerr setvis(bool visible, uint16_t x, uint16_t y) { return ssetvis(stdscr, visible, x, y); }
+
+enum escerr stogglevis(const screen* scr, uint16_t x, uint16_t y);
+static inline enum escerr togglevis(uint16_t x, uint16_t y) { return stogglevis(stdscr, x, y); }
+
 /** Calls ssetgphm for each grapheme in the string based from the fitst one */
-enum escerr saddstr(screen* restrict scr, const char* str, size_t strlen, uint16_t x, uint16_t y);
-static inline enum escerr addstr(const char* str, size_t strlen, uint16_t x, uint16_t y)
-{
-	return saddstr(stdscr, str, strlen, x, y);
-}
+void saddstr(screen* restrict scr, const char32_t* str32, size_t strlen, uint16_t x, uint16_t y);
+static inline void addstr(const char32_t* str32, size_t strlen, uint16_t x, uint16_t y) { saddstr(stdscr, str32, strlen, x, y); }
 

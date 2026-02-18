@@ -7,16 +7,14 @@ int main()
 {
 	init_flags(TERM_ALTBUF | TERM_NO_ECHO | TERM_HIDE_CURSOR);
 
-	setgphm("┌", 5, 5);
-	setgphm("┌", 6, 5);
-	setgphm("a", 15, 8);
-	refresh();
-	setgphm("", 5, 5);
-	clearefresh();
+	setcp(U'é', 5, 5);
+	setcp(U'┌', 6, 5);
+	setcp(U'a', 15, 8);
+	setvis(false, 5, 5);
 
-	setclrpair(CLR_RGB(125, 200, 50), CLR_CODE(31), 15, 8);
+	setclrpair(CLR_RGB(10, 20, 50), CLR_CODE(31), 15, 8);
 	setfgclr(CLR_RGB(125, 25, 50), 10, 8);
-	refresh();
+	refresh(true);
 
 	getchar();
 	cleanup_term();

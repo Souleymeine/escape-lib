@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -12,10 +13,10 @@
 #include "../include/_escdef.h"
 #include "../include/escdef.h"
 #include "../include/escseq.h"
-#include "../include/grapheme.h"
 #include "../include/screen.h"
 #include "../include/terminal.h"
 #include "../include/termsize.h"
+#include "../include/utf.h"
 
 // Default values
 static usize s_strbuf_init_size   = 4096;
@@ -75,22 +76,21 @@ static inline usize alignptr(usize addr, usize align)
 
 
 /** Initializes the fields of the given scrbuf struct and the page segment it represents */
-static inline void initscrbuf(struct scrbuf* scrbuf, struct termclr bg_clr, struct termclr fg_clr, usize charssize,
-                              usize metassize, usize clrssize)
+static inline void initscrbuf(struct scrbuf* scrbuf, struct termclr bg_clr, struct termclr fg_clr, usize char_and_tags_size,
+                              usize clrs_size)
 {
 	scrbuf->def_bg_clr = bg_clr;
 	scrbuf->def_fg_clr = fg_clr;
 	// We assign each buffer pointer to the right location, based on the given address and offset in the arena
-	scrbuf->chars     = OFFSET_PTR_BY(scrbuf, sizeof(struct scrbuf), c32);
-	scrbuf->cellmetas = OFFSET_PTR_BY(scrbuf->chars, charssize, struct cellmeta);
-	scrbuf->bg_clrs   = OFFSET_PTR_BY(scrbuf->cellmetas, metassize, union termclrval);
-	scrbuf->fg_clrs   = OFFSET_PTR_BY(scrbuf->bg_clrs, clrssize, union termclrval);
+	scrbuf->tagschars = OFFSET_PTR_BY(scrbuf, sizeof(struct scrbuf), struct tagchar);
+	scrbuf->bg_clrs   = OFFSET_PTR_BY(scrbuf->tagschars, char_and_tags_size, union clrval);
+	scrbuf->fg_clrs   = OFFSET_PTR_BY(scrbuf->bg_clrs, clrs_size, union clrval);
 }
 
 static inline void initstrbuf(struct _strbuf* strbuf, usize pagesize)
 {
 	strbuf->pagesize = pagesize;
-	strbuf->buf      = OFFSET_PTR_BY(strbuf, sizeof(struct _strbuf), char);
+	strbuf->buf      = OFFSET_PTR_BY(strbuf, sizeof(struct _strbuf), c8);
 	strbuf->cursor   = 0;
 	strbuf->bufsize  = s_strbuf_init_size;
 }
@@ -100,13 +100,11 @@ screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 	const struct termsize size = get_termsize();
 	const usize cell_cnt       = size.cols * size.rows;
 
-	const usize charssize = cell_cnt * sizeof(c32);
-	const usize clrssize  = cell_cnt * sizeof(union termclrval);
-	const usize metassize = cell_cnt * sizeof(struct cellmeta);
+	const usize tagchars_size = cell_cnt * sizeof(c32);
+	const usize clrs_size     = cell_cnt * sizeof(union clrval);
 	// size of struct scrbuf + the size of its buffers including worst case padding
 	const usize worst_scrbuf_memsize
-		= WORST_SIZEOF(struct scrbuf)
-	      + (2 * (clrssize + alignof(union termclrval)) + (charssize + alignof(c32)) + (metassize + alignof(uchar)));
+		= sizeof(struct scrbuf) + (2 * (clrs_size + alignof(union clrval)) + (tagchars_size + alignof(c32)));
 
 	const usize arena_pagesize  = WORST_SIZEOF(struct _scr_arena) + (1 + (scrflags & SCREEN_USE_VIRTUAL)) * worst_scrbuf_memsize;
 	const usize strbuf_pagesize = WORST_SIZEOF(struct _strbuf) + s_strbuf_init_size;
@@ -130,11 +128,11 @@ screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
 	initstrbuf(arena->strbuf, strbuf_pagesize);
 
 	arena->pbuf = OFFSET_PTR_BY(arena, sizeof(struct _scr_arena), struct scrbuf);
-	initscrbuf(arena->pbuf, bgclr, fgclr, charssize, metassize, clrssize);
+	initscrbuf(arena->pbuf, bgclr, fgclr, tagchars_size, clrs_size);
 	if (scrflags & SCREEN_USE_VIRTUAL) {
 		// arena is 0 initialized, so arena->_vbuf is nullptr by default
 		arena->vbuf = OFFSET_PTR_BY(arena->pbuf, worst_scrbuf_memsize, struct scrbuf);
-		initscrbuf(arena->vbuf, bgclr, fgclr, charssize, metassize, clrssize);
+		initscrbuf(arena->vbuf, bgclr, fgclr, tagchars_size, clrs_size);
 	}
 
 	return arena;
@@ -153,7 +151,7 @@ bool freescr(screen* scr)
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * ------------------------ */
-struct _strbuf* strbuf_grow(struct _strbuf* strbuf)
+struct _strbuf* strbuf_grow(const struct _strbuf* strbuf)
 {
 	const usize newbufsize   = strbuf->bufsize * s_strbuf_growth_rate;
 	const usize new_pagesize = WORST_SIZEOF(struct _strbuf) + newbufsize;
@@ -166,13 +164,13 @@ struct _strbuf* strbuf_grow(struct _strbuf* strbuf)
 	newstrbuf->pagesize = new_pagesize;
 	newstrbuf->bufsize  = newbufsize;
 	newstrbuf->cursor   = strbuf->cursor;
-	newstrbuf->buf      = OFFSET_PTR_BY(newstrbuf, sizeof(struct _strbuf), char);
+	newstrbuf->buf      = OFFSET_PTR_BY(newstrbuf, sizeof(struct _strbuf), c8);
 	// -- CRITICAL : move memory (MUST be faster than or equal to memmove) -- //
 	for (usize i = 0; i < strbuf->bufsize; ++i) {
 		newstrbuf->buf[i] = strbuf->buf[i];
 	}
 
-	if (heapfree(strbuf, strbuf->bufsize)) {
+	if (heapfree((struct _strbuf*)strbuf, strbuf->bufsize)) {
 		// TODO : Return an error via enum so we know exactly what went wrong instead of just "true"
 		heapfree(newstrbuf, new_pagesize); // I fear there is nothing we can do...
 		return nullptr;
@@ -182,7 +180,7 @@ struct _strbuf* strbuf_grow(struct _strbuf* strbuf)
 	return newstrbuf;
 }
 
-static inline void strbufadd(struct _strbuf** strbuf, const char* str, usize strlen)
+static inline void strbufadd(struct _strbuf** const strbuf, const c8* str, usize strlen)
 {
 	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
 		*strbuf = strbuf_grow(*strbuf);
@@ -199,24 +197,24 @@ static inline void strbufadd(struct _strbuf** strbuf, const char* str, usize str
 	(*strbuf)->cursor += strlen;
 }
 
-static void addclrtostrbuf(screen* scr, usize cell_idx, bool isbg)
+static void addclrtostrbuf(screen* const scr, usize cell_idx, bool isbg)
 {
-	const enum clrfmt fmt = isbg ? scr->pbuf->cellmetas[cell_idx].bg_clrfmt : scr->pbuf->cellmetas[cell_idx].fg_clrfmt;
-	switch (fmt) {
-	case CELL_CLRFMT_CODE:
-		char clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
+	const enum clrtag tag = isbg ? scr->pbuf->tagschars[cell_idx].bgtag : scr->pbuf->tagschars[cell_idx].fgtag;
+	switch (tag) {
+	case CLRTAG_CODE:
+		c8 clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
 		const uchar clr_code        = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
 		const usize clr_code_seqlen = paramu8seq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
 		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 		break;
-	case CELL_CLRFMT_RGB:
-		char clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
+	case CLRTAG_RGB:
+		c8 clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
 		const struct rgb clr_rgb   = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
 		const usize clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
 		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 		break;
-	case CELL_CLRFMT_ID:
-		char clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
+	case CLRTAG_ID:
+		c8 clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
 		const u8 clr_id           = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
 		const usize clr_id_seqlen = paramu8seq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
 		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
@@ -224,7 +222,7 @@ static void addclrtostrbuf(screen* scr, usize cell_idx, bool isbg)
 	}
 }
 
-enum escerr sidxtocord(const screen* scr, usize i, u16* x, u16* y)
+enum escerr sidxtocord(const screen* const scr, usize i, u16* x, u16* y)
 {
 	*y = i / scr->termsize.cols;
 	*x = i - *y * scr->termsize.cols;
@@ -233,36 +231,30 @@ enum escerr sidxtocord(const screen* scr, usize i, u16* x, u16* y)
 	return sgetcorderr(scr, *x, *y);
 }
 
-// Fills strbuf of scr with a blank str to clear the screen when refreshing
-static inline void sclear(screen* scr)
-{
-	const usize cell_cnt = scr->termsize.cols * scr->termsize.rows;
-	for (usize i = 0; i < cell_cnt; ++i) {
-		strbufadd(&scr->strbuf, " ", 1);
-	}
-	strbufadd(&scr->strbuf, CSI "H", 2);
-}
-
-bool sclearefresh(screen* scr)
-{
-	if (scr->refreshed) { // Won't clear if the screen has never been refreshed
-		sclear(scr);
-	}
-	return srefresh(scr);
-}
+#define SWAP(x, y) \
+	x ^= y;        \
+	y ^= x;        \
+	x ^= y
 
 // TODO : Allow for saving strbuf to any file
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * --------------------- -- */
-bool srefresh(screen* scr)
+bool srefresh(screen* const scr, bool clear)
 {
-	// TODO : Account for changing termflags
+	if (clear && scr->refreshed) { // Won't clear if the screen has never been refreshed
+		const usize cell_cnt = scr->termsize.cols * scr->termsize.rows;
+		for (usize i = 0; i < cell_cnt; ++i) {
+			strbufadd(&scr->strbuf, u8" ", 1);
+		}
+		strbufadd(&scr->strbuf, CSI u8"H", 2);
+	}
 
+	// TODO : Account for changing termflags
 	const usize cell_cnt = scr->termsize.cols * scr->termsize.rows;
 	u16 last_x = 0, last_y = 0;
 	for (usize i = 0; i < cell_cnt; ++i) {
-		if (!scr->pbuf->cellmetas[i].is_visible) {
+		if (!scr->pbuf->tagschars[i].visible) {
 			continue;
 		}
 
@@ -272,41 +264,46 @@ bool srefresh(screen* scr)
 		u16 x, y;
 		sidxtocord(scr, i, &x, &y);
 		if (last_x == scr->termsize.cols - 1 && x == 0) {
-			strbufadd(&scr->strbuf, "\n", 1);
+			strbufadd(&scr->strbuf, u8"\n", 1);
 		} else if (x != last_x + 1 || y != last_y) {
-			char mvseq[U16_WORST_PARAMSEQ_LEN(2)];
+			c8 mvseq[U16_WORST_PARAMSEQ_LEN(2)];
 			const usize mvseq_len = paramu16seq(mvseq, (u16[]){y, x}, 2, 'H');
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
-		const bool cell_has_clr = (scr->pbuf->cellmetas[i].bg_clrfmt || scr->pbuf->cellmetas[i].fg_clrfmt);
-		if (!scr->pbuf->chars[i] && cell_has_clr) {
-			strbufadd(&scr->strbuf, " ", 1);
+		const bool has_clr = (scr->pbuf->tagschars[i].bgtag || scr->pbuf->tagschars[i].fgtag);
+		if (!scr->pbuf->tagschars[i].c && has_clr) {
+			strbufadd(&scr->strbuf, u8" ", 1);
 		} else {
-			char gphm[MAX_GPHM_CPTS];
-			usize cp_cnt = c32togphm(scr->pbuf->chars[i], gphm);
-			strbufadd(&scr->strbuf, gphm, cp_cnt);
+			c8 mb[MAX_UTF8_CU];
+			usize mb_len = cptoutf8(scr->pbuf->tagschars[i].c, mb);
+			strbufadd(&scr->strbuf, mb, mb_len);
 		}
 
-		if (cell_has_clr) {
-			strbufadd(&scr->strbuf, CSI "m", 3);
+		if (has_clr) {
+			strbufadd(&scr->strbuf, CSI u8"m", 3);
 		}
 		last_x = x;
 		last_y = y;
 	}
 
-	if (print(scr->strbuf->buf, scr->strbuf->cursor)) {
+	if (termprint(scr->strbuf->buf, scr->strbuf->cursor)) {
 		return true;
 	}
 
 	// TODO : vscr
 
 	if (scr->vbuf != nullptr) {
-		scr->vbuf = scr->pbuf;
+		// swap pointers to not move or copy memory (that would be ridiculous)
+		// the old pbuf becomes the next vbuf
+		uintptr_t addrof_pbuf = (uintptr_t)scr->pbuf;
+		uintptr_t addrof_vbuf = (uintptr_t)scr->vbuf;
+		SWAP(addrof_pbuf, addrof_vbuf);
+		scr->pbuf = (struct scrbuf*)addrof_pbuf;
+		scr->vbuf = (struct scrbuf*)addrof_vbuf;
 	}
 	scr->strbuf->cursor = 0;
-
-	scr->refreshed = true;
+	scr->refreshed      = true;
 
 	return false;
 }
@@ -328,19 +325,12 @@ inline isize scordtoidx(const screen* scr, u16 x, u16 y)
 	return (sgetcorderr(scr, x, y) == ESC_OK) ? (y - 1) * scr->termsize.cols + (x - 1) : -1;
 }
 
-enum escerr ssetgphm(screen* restrict scr, const char* gphm, u16 x, u16 y)
+enum escerr ssetcp(screen* restrict scr, c32 c, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		c32 c;
-		if (gphm[0] == '\0') { // empty string
-			c = 0;
-		} else if (!(c = gphmtoc32((uchar*)gphm))) {
-			return ESC_ERR_GPHM;
-		}
-		scr->pbuf->cellmetas[idx].is_visible = true;
-
-		scr->pbuf->chars[idx] = c;
+		scr->pbuf->tagschars[idx].visible = true;
+		scr->pbuf->tagschars[idx].c       = c;
 	}
 	return sgetcorderr(scr, x, y);
 }
@@ -349,8 +339,8 @@ enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		scr->pbuf->cellmetas[idx].is_visible = true;
-		scr->pbuf->cellmetas[idx].bg_clrfmt  = clr.fmt;
+		scr->pbuf->tagschars[idx].visible = true;
+		scr->pbuf->tagschars[idx].bgtag   = clr.tag;
 
 		scr->pbuf->bg_clrs[idx] = clr.val;
 	}
@@ -360,8 +350,8 @@ enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		scr->pbuf->cellmetas[idx].is_visible = true;
-		scr->pbuf->cellmetas[idx].fg_clrfmt  = clr.fmt;
+		scr->pbuf->tagschars[idx].visible = true;
+		scr->pbuf->tagschars[idx].fgtag   = clr.tag;
 
 		scr->pbuf->fg_clrs[idx] = clr.val;
 	}
@@ -371,9 +361,9 @@ enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termc
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
-		scr->pbuf->cellmetas[idx].is_visible = true;
-		scr->pbuf->cellmetas[idx].bg_clrfmt  = bgclr.fmt;
-		scr->pbuf->cellmetas[idx].fg_clrfmt  = fgclr.fmt;
+		scr->pbuf->tagschars[idx].visible = true;
+		scr->pbuf->tagschars[idx].bgtag   = bgclr.tag;
+		scr->pbuf->tagschars[idx].fgtag   = fgclr.tag;
 
 		scr->pbuf->bg_clrs[idx] = bgclr.val;
 		scr->pbuf->fg_clrs[idx] = fgclr.val;
@@ -381,15 +371,20 @@ enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termc
 	return sgetcorderr(scr, x, y);
 }
 
-enum escerr saddstr(screen* restrict scr, const char* str, usize strlen, u16 x, u16 y)
+
+enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y)
 {
-	enum cptype type = CP_INVALID;
-	for (usize i = 0; i < strlen; i += type) {
-		if ((type = get_cptype(str[i])) == CP_INVALID) {
-			return ESC_ERR_UTF8;
-		}
-		ssetgphm(scr, str + i, x, y);
+	const isize idx = scordtoidx(scr, x, y);
+	if (idx != -1) {
+		scr->pbuf->tagschars[idx].visible = visible;
 	}
-	return ESC_OK;
+	return sgetcorderr(scr, x, y);
+}
+
+void saddstr(screen* restrict scr, const c32* str32, usize strlen, u16 x, u16 y)
+{
+	for (usize i = 0; i < strlen; ++i) {
+		ssetcp(scr, str32[i], x, y);
+	}
 }
 
