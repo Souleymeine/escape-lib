@@ -12,7 +12,10 @@
 
 struct seqel {
 	union {
-		struct { char* buf; size_t len; } str;
+		struct {
+			char* buf;
+			size_t len;
+		} str;
 		char chr;
 		uint16_t uint16;
 		uint8_t uint8;

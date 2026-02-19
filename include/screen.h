@@ -181,7 +181,10 @@ static inline enum escerr setfgclr(struct termclr clr, uint16_t x, uint16_t y) {
 
 /** Sets the given fg and bg colors at (x, y) */
 enum escerr ssetclrpair(screen* scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
-static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y) { return ssetclrpair(stdscr, bgclr, fgclr, x, y); }
+static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y)
+{
+	return ssetclrpair(stdscr, bgclr, fgclr, x, y);
+}
 
 enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y);
 static inline enum escerr setvis(bool visible, uint16_t x, uint16_t y) { return ssetvis(stdscr, visible, x, y); }
