@@ -275,7 +275,7 @@ bool srefresh(screen* const scr, bool clear)
 			strbufadd(&scr->strbuf, u8" ", 1);
 		} else {
 			c8 mb[MAX_UTF8_CU];
-			usize mb_len = cptoutf8(scr->pbuf->tagschars[i].c, mb);
+			usize mb_len = cptostr(scr->pbuf->tagschars[i].c, mb);
 			strbufadd(&scr->strbuf, mb, mb_len);
 		}
 

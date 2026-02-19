@@ -38,7 +38,7 @@ long cu_cnt(const char8_t* str, size_t len);
 long get_inv_cu(const char8_t* str, size_t len);
 
 /** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme, 0 if str is invalid */
-char32_t utf8tocp(const char8_t* cp);
+char32_t strtocp(const char8_t* cp);
 /** Fills gphm with the codepoints found in c32. Returns the number of codepoints found.
  * gphm should have at least as many bytes as there are in c32. */
-size_t cptoutf8(char32_t cp, char8_t* dest);
+size_t cptostr(char32_t cp, char8_t* dest);

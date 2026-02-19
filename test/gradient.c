@@ -8,7 +8,7 @@
 int main(int argc, char* argv[])
 {
 	init_flags(TERM_NO_ECHO | TERM_HIDE_CURSOR | TERM_ALTBUF);
-	const char32_t cp = (argc == 1) ? U'é' : utf8tocp(UTF8(argv[1]));
+	const char32_t cp = (argc == 1) ? U'é' : strtocp(UTF8(argv[1]));
 
 	const struct termsize size = get_termsize();
 	for (uint16_t y = 1; y <= size.rows; ++y) {

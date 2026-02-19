@@ -58,7 +58,7 @@ isize get_inv_cu(const c8* str, usize strlen)
 	return -1;
 }
 
-c32 utf8tocp(const c8* cp)
+c32 strtocp(const c8* cp)
 {
 	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
 	const enum cu_type cu_t = get_cu_type(cp[0]);
@@ -75,7 +75,7 @@ c32 utf8tocp(const c8* cp)
 	return c;
 }
 
-usize cptoutf8(c32 c, char8_t* dest)
+usize cptostr(c32 c, char8_t* dest)
 {
 	// From : https://stackoverflow.com/questions/42012563/convert-unicode-code-points-to-utf-8-and-utf-32
 	// TODO : find the core logic and refactor if it's faster
