@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "screen.h"
-#include "termsize.h"
+#include "../include/screen.h"
+#include "../include/termsize.h"
 
 static void test_scr(screen* scr, const char* msg)
 {
@@ -17,19 +17,20 @@ static void test_scr(screen* scr, const char* msg)
 	getchar();
 
 	if (freescr(scr)) {
-		fprintf(stderr, "Call to freescr failed, value of errno : %d\n", errno);
+		fprintf(stderr, "Call to freescr failed, value of errno : %d\n\n", errno);
+	} else {
+		printf("Call to freescr succeded!\n\n");
 	}
-	printf("Call to freescr succeded!\n\n");
 }
 
 int main()
 {
 	const struct termsize size = get_termsize();
 	printf("\n-------------------- test --------------------\nsize : %d x %d\n", size.cols, size.rows);
-	newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, USE_VSCR);
+	newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, SCREEN_USE_VIRTUAL);
 	screen* no_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, 0);
 	test_scr(no_vscr, "screen without virtual screen");
-	screen* with_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, USE_VSCR);
+	screen* with_vscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, SCREEN_USE_VIRTUAL);
 	test_scr(with_vscr, "screen with virtual screen");
 
 	printf("Creating core dump (if your system is setup correctly), program will now crash.\n");

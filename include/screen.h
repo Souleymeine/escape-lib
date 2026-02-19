@@ -1,10 +1,11 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <uchar.h>
 
-#include "escdef.h"
+#include "terminal.h"
 #include "termsize.h"
 
 struct rgb {
@@ -13,39 +14,55 @@ struct rgb {
 	uint8_t b;
 };
 
-union termclr {
-	unsigned char code;
-	struct rgb rgb;
+// TODO : find a way to make clang-format inline this macro
+#define CLR_RGB(r, g, b)                          \
+	(struct termclr)                              \
+	{                                             \
+		.tag = CLRTAG_RGB, .val.rgb = { r, g, b } \
+	}
+#define CLR_ID(c) ((struct termclr){.tag = CLRTAG_ID, .val.id = c})
+// see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
+#define CLR_CODE(c) ((struct termclr){.tag = CLRTAG_CODE, .val.code = c + 30})
+
+enum clrtag {
+	CLRTAG_CODE = 1,
+	CLRTAG_RGB,
+	CLRTAG_ID, // 2 bits max 0b11
+};
+
+union clrval {
+	uint8_t code;
 	uint8_t id;
+	struct rgb rgb;
 };
 
-enum ENUMTYPE(cellflags, unsigned char) {
-	CELL_VISIBLE    = 0x1,
-	CELL_BG_CLRCODE = 0x2,
-	CELL_FG_CLRCODE = 0x4,
-	CELL_BG_CLRRGB  = 0x8,
-	CELL_FG_CLRRGB  = 0x10,
-	CELL_BG_CLRID   = 0x20,
-	CELL_FG_CLRID   = 0x40,
+struct termclr {
+	enum clrtag tag;
+	union clrval val;
 };
 
-enum ENUMTYPE(cordbounderrs, unsigned char) {
-	COORD_X_IN  = 0x1,
-	COORD_Y_IN  = 0x2,
-	COORD_X_OUT = 0x4,
-	COORD_Y_OUT = 0x8,
+enum clrcode {
+	CLRCODE_BLACK,
+	CLRCODE_RED,
+	CLRCODE_GREEN,
+	CLRCODE_YELLOW,
+	CLRCODE_BLUE,
+	CLRCODE_MAGENTA,
+	CLRCODE_CYAN,
+	CLRCODE_WHITE,
+	CLRCODE_DEF = 9,
 };
 
-enum ENUMTYPE(termclrcode, unsigned char) {
-	BLACK,
-	RED,
-	GREEN,
-	YELLOW,
-	BLUE,
-	MAGENTA,
-	CYAN,
-	WHITE,
-	DEF_CLRCODE,
+#define DEF_SCR_BGCLR ((struct termclr){.tag = CLRTAG_CODE, .val.code = CLRCODE_BLACK})
+#define DEF_SCR_FGCLR ((struct termclr){.tag = CLRTAG_CODE, .val.code = CLRCODE_DEF})
+
+// TODO : convert to regular bit flags with a few helper functions
+// (bitfields don't have a well defined mem layout unfortunately)
+struct tagchar { // Must fit in 32 bits
+	bool visible : 1;
+	enum clrtag bgtag : 2;
+	enum clrtag fgtag : 2;
+	char32_t c : 21; // utf8 can't go past 2^21, 11 bits remain always unused even in utf32
 };
 
 /**
@@ -54,7 +71,7 @@ enum ENUMTYPE(termclrcode, unsigned char) {
  * you want to. Explanation for the choice of types:
  * - `chars` uses 32 bit wide characters because it is the largest size for a UTF-8 grapheme (so you could say UTF-32).
  *   Using 32 bits is a sacrifice we have to make to be able to address any "visible" character (grapheme) based
- *   on an index/coordinates on our terminal's grid. The additional unused space is only wasteful in memory,
+ *   on an index/uint16_tinates on our terminal's grid. The additional unused space is only wasteful in memory,
  *   the screen will get translated to be written to stdout anyway + it has the VITAL advantage of not requiring us
  *   to dynamically reallocate the buffer when it's full, because it cannot be full until every cell contains a grapheme.
  * - `bg_clrs` and `fg_clrs` use arrays of unions which represent a general "color" (clr). It is very practical, since a color
@@ -69,66 +86,113 @@ enum ENUMTYPE(termclrcode, unsigned char) {
  */
 struct scrbuf {
 	// properties
-	termstateflag termflags;
-	union termclr bg_clr;
-	union termclr fg_clr;
+	struct termclr def_bg_clr;
+	struct termclr def_fg_clr;
 
 	// cell buffers
-	char32_t* chars;
-	unsigned char* cellflags;
-	union termclr* bg_clrs;
-	union termclr* fg_clrs;
+	struct tagchar* tagschars; // 32bit bitfields
+	union clrval* bg_clrs;
+	union clrval* fg_clrs;
+};
+
+struct strbufview {
+	char8_t* buf;
+	size_t size;
+};
+
+struct _strbuf {
+	size_t pagesize;
+	size_t bufsize;
+	size_t cursor;
+	char8_t* buf;
 };
 
 struct _scr_arena {
-	size_t _pagesize;      // Avoids us from having to compute the page size again when de-allocating the arena
-	struct termsize _size; // Same
-	struct scrbuf* _pbuf;
-	struct scrbuf* _vbuf;
+	bool refreshed;           // true if srefresh was called at least once with this screen
+	size_t pagesize;          // Avoids us from having to compute the page size again when de-allocating the arena
+	struct termsize termsize; // Same
+	termstatefl termflags;
+
+	struct _strbuf* strbuf;
+	struct scrbuf* pbuf;
+	struct scrbuf* vbuf;
 };
 
 typedef struct _scr_arena screen;
-
-
-/** Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
- * scrflags holds the same flags as termflags with some additional flags for screens exclusively. */
-screen* newscr(union termclr bg_clr, union termclr fg_clr, termstateflag scrflags);
-/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
-bool freescr(screen* scr);
-
-/** Returns a pointer to the physical buffer of the given screen. */
-static inline struct scrbuf* sgetpbuf(const screen* scr)
-{
-	return scr->_pbuf;
-}
-/** Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
- * NULL/nullptr otherwise. */
-static inline struct scrbuf* sgetvbuf(const screen* scr)
-{
-	return scr->_vbuf;
-}
-/** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
- * Use scoorderr(x, y) to get more details. */
-long scordtoidx(const screen* scr, coord x, coord y);
-/** Returns flags of cordbounderrs given x and y. */
-errflcord scorderr(const screen* scr, coord x, coord y);
-/** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
- * Returns flags of cordbounderrs given x and y. */
-errflcord ssetc32(screen* restrict scr, char32_t c32, coord x, coord y);
-/** Sets the given color at (x, y) */
-errflcord ssetclr(screen* restrict scr, union termclr clr, unsigned char cellclrflag, coord x, coord y);
 
 extern screen* stdscr;
 // IDK, see : https://stackoverflow.com/questions/76365216/why-are-stderr-stdin-stdout-defined-as-macros
 #define stdscr stdscr
 
-#define DEF_SCR_BGCLR ((union termclr){.code = BLACK})
-#define DEF_SCR_FGCLR ((union termclr){.code = DEF_CLRCODE})
 
-#define getpbuf(...)   sgetpbuf(stdscr, __VA_ARGS__)
-#define getvbuf(...)   sgetvbuf(stdscr, __VA_ARGS__)
-#define corderr(...)   scorderr(stdscr, __VA_ARGS__)
-#define setc23(...)    ssetc32(stdscr, __VA_ARGS__)
-#define cordtoidx(...) scordtoidx(stdscr, __VA_ARGS__)
-#define setclr(...)    ssetclr(stdscr, __VA_ARGS__)
+/** Sets variables relative to the internal memory allocations of the library,
+ * where scrstr refers to the screen string buffer, that is the buffer that will contain the string
+ * which will be written to stdout to represent whatever screen you want to see with srefresh/refresh for stdscr (default) */
+void scrmemargs(size_t scrstr_bufsize, float scrstr_growth_rate);
+
+/** Returns the pointer to the newly created screen if succesful, NULL / nullptr otherwise.
+ * scrflags holds the same flags as termflags with some additional flags for screens exclusively. */
+screen* newscr(struct termclr bg_clr, struct termclr fg_clr, termstatefl scrflags);
+/** De-allocate the given screen. Returns false (0) if successful and sets scr to NULL/nullptr, true (1) otherwise */
+bool freescr(screen* scr);
+
+/** Draws the given screen with the smallest possible sequence based on previous states if available */
+bool srefresh(screen* scr, bool clear);
+static inline bool refresh(bool clear) { return srefresh(stdscr, clear); }
+
+enum escerr sidxtocord(const screen* scr, size_t i, uint16_t* x, uint16_t* y);
+static inline enum escerr idxtocord(size_t i, uint16_t* x, uint16_t* y) { return sidxtocord(stdscr, i, x, y); }
+
+/** Returns a pointer to the physical buffer of the given screen. */
+static inline struct scrbuf* sgetpbuf(const screen* scr) { return scr->pbuf; }
+static inline struct scrbuf* getpbuf() { return sgetpbuf(stdscr); }
+
+/** Returns a pointer to the virtual buffer of the given screen if the USE_VSCR flag was used with newscr,
+ * NULL/nullptr otherwise. */
+static inline struct scrbuf* sgetvbuf(const screen* scr) { return scr->vbuf; }
+static inline struct scrbuf* getvbuf() { return sgetvbuf(stdscr); }
+
+static inline struct strbufview sgetstrbufview(const screen* scr)
+{
+	return (struct strbufview){.buf = scr->strbuf->buf, .size = scr->strbuf->cursor};
+}
+static inline struct strbufview getstrbufview() { return sgetstrbufview(stdscr); }
+/** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
+ * Use scorderr(x, y) to get more details. */
+long scordtoidx(const screen* scr, uint16_t x, uint16_t y);
+static inline long cordtoidx(uint16_t x, uint16_t y) { return scordtoidx(stdscr, x, y); }
+
+/** Returns flags of cordbounderrs given x and y. */
+enum escerr sgetcorderr(const screen* scr, uint16_t x, uint16_t y);
+static inline enum escerr getcorderr(uint16_t x, uint16_t y) { return sgetcorderr(stdscr, x, y); }
+
+/** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
+ * Returns flags of cordbounderrs given x and y. */
+enum escerr ssetcp(screen* scr, char32_t c, uint16_t x, uint16_t y);
+static inline enum escerr setcp(char32_t c, uint16_t x, uint16_t y) { return ssetcp(stdscr, c, x, y); }
+
+/** Sets the given bg color at (x, y) */
+enum escerr ssetbgclr(screen* scr, struct termclr clr, uint16_t x, uint16_t y);
+static inline enum escerr setbgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetbgclr(stdscr, clr, x, y); }
+
+/** Sets the given fg color at (x, y) */
+enum escerr ssetfgclr(screen* scr, struct termclr clr, uint16_t x, uint16_t y);
+static inline enum escerr setfgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetfgclr(stdscr, clr, x, y); }
+
+/** Sets the given fg and bg colors at (x, y) */
+enum escerr ssetclrpair(screen* scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
+static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y)
+{
+	return ssetclrpair(stdscr, bgclr, fgclr, x, y);
+}
+
+enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y);
+static inline enum escerr setvis(bool visible, uint16_t x, uint16_t y) { return ssetvis(stdscr, visible, x, y); }
+
+enum escerr stogglevis(const screen* scr, uint16_t x, uint16_t y);
+static inline enum escerr togglevis(uint16_t x, uint16_t y) { return stogglevis(stdscr, x, y); }
+
+/** Calls ssetgphm for each grapheme in the string based from the fitst one */
+void saddstr(screen* scr, const char32_t* str32, size_t strlen, uint16_t x, uint16_t y);
+static inline void addstr(const char32_t* str32, size_t strlen, uint16_t x, uint16_t y) { saddstr(stdscr, str32, strlen, x, y); }
 
