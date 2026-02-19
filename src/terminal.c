@@ -105,7 +105,7 @@ const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
 const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
 #endif
 
-bool termprint(const c8* restrict buf, usize len)
+bool termprint(const c8* buf, usize len)
 {
 	long bytes_written;
 #if __unix__

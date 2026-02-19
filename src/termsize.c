@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
+
 #include "../include/termsize.h"
 
 #if _WIN32

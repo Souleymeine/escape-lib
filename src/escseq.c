@@ -14,7 +14,7 @@ uchar cntdigits(u16 n)
 }
 
 // Puts ASCII representation of unsigned int N into DEST and returns the number of digits of N (`cntdigits(n)`)
-static usize utostr(c8* restrict dest, u16 n)
+static usize utostr(c8* dest, u16 n)
 {
 	const usize digits = cntdigits(n);
 	for (usize i = 0; i < digits; ++i) {
@@ -24,7 +24,7 @@ static usize utostr(c8* restrict dest, u16 n)
 	return digits;
 }
 
-static inline usize strcpy(c8* restrict dest, const char* restrict src, usize n)
+static inline usize strcpy(c8* dest, const char* src, usize n)
 {
 	for (usize i = 0; i < n; ++i) {
 		dest[i] = src[i];
@@ -32,14 +32,14 @@ static inline usize strcpy(c8* restrict dest, const char* restrict src, usize n)
 	return n;
 }
 
-usize seqcat(c8* restrict dest, const struct seqel* restrict elements, usize n)
+usize seqcat(c8* dest, const struct seqel* elements, usize n)
 {
 	usize ofst = 0;
 	for (usize i = 0; i < n; ++i) {
 		switch (elements[i].type) {
 		case FMT_STR:  ofst += strcpy(dest + ofst, elements[i].str.buf, elements[i].str.len); break;
 		case FMT_U16:  ofst += utostr(dest + ofst, elements[i].uint16); break;
-		case FMT_U8:   ofst += utostr(dest + ofst, (u8)elements[i].uint8); break;
+		case FMT_U8:   ofst += utostr(dest + ofst, elements[i].uint8); break;
 		case FMT_CHAR: dest[ofst++] = elements[i].chr; break;
 		}
 	}
@@ -48,31 +48,31 @@ usize seqcat(c8* restrict dest, const struct seqel* restrict elements, usize n)
 
 #define PARAM_SLICE_COUNT(n) n * 2 + 1 // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
 
-static inline void parambitsbound(struct seqel* restrict elements, usize len, char end)
+static inline void paramelbound(struct seqel* elements, usize len, char end)
 {
 	elements[0]       = SEQ_STRL(CSI);
 	elements[len - 1] = SEQ_CHR(end);
 }
 
-usize paramu8seq(c8* restrict dest, const u8* restrict params, usize n, char end)
+usize u8paramseq(c8* dest, const u8* params, usize n, char end)
 {
 	const usize el_cnt = PARAM_SLICE_COUNT(n);
-	struct seqel elemnts[el_cnt];
-	parambitsbound(elemnts, el_cnt, end);
+	struct seqel els[el_cnt];
+	paramelbound(els, el_cnt, end);
 	for (usize i = 1; i < el_cnt - 1; ++i) {
-		elemnts[i] = (i & 1) ? SEQ_U8(params[(i - 1) / 2]) : SEQ_CHR(';');
+		els[i] = (i & 1) ? SEQ_U8(params[(i - 1) / 2]) : SEQ_CHR(';');
 	}
-	return seqcat(dest, elemnts, el_cnt);
+	return seqcat(dest, els, el_cnt);
 }
 
-usize paramu16seq(c8* restrict dest, const u16* restrict params, usize n, char end)
+usize u16paramseq(c8* dest, const u16* params, usize n, char end)
 {
 	const usize el_cnt = PARAM_SLICE_COUNT(n);
-	struct seqel elemnts[el_cnt];
-	parambitsbound(elemnts, el_cnt, end);
+	struct seqel els[el_cnt];
+	paramelbound(els, el_cnt, end);
 	for (usize i = 1; i < el_cnt - 1; ++i) {
-		elemnts[i] = (i & 1) ? SEQ_U16(params[(i - 1) / 2]) : SEQ_CHR(';');
+		els[i] = (i & 1) ? SEQ_U16(params[(i - 1) / 2]) : SEQ_CHR(';');
 	}
-	return seqcat(dest, elemnts, el_cnt);
+	return seqcat(dest, els, el_cnt);
 }
 

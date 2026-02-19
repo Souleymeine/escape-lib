@@ -11,7 +11,6 @@
 #endif
 
 #include "../include/_escdef.h"
-#include "../include/escdef.h"
 #include "../include/escseq.h"
 #include "../include/screen.h"
 #include "../include/terminal.h"
@@ -204,19 +203,19 @@ static void addclrtostrbuf(screen* const scr, usize cell_idx, bool isbg)
 	case CLRTAG_CODE:
 		c8 clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
 		const uchar clr_code        = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
-		const usize clr_code_seqlen = paramu8seq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
+		const usize clr_code_seqlen = u8paramseq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
 		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
 		break;
 	case CLRTAG_RGB:
 		c8 clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
 		const struct rgb clr_rgb   = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
-		const usize clr_rgb_seqlen = paramu8seq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
+		const usize clr_rgb_seqlen = u8paramseq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
 		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
 		break;
 	case CLRTAG_ID:
 		c8 clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
 		const u8 clr_id           = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
-		const usize clr_id_seqlen = paramu8seq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
+		const usize clr_id_seqlen = u8paramseq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
 		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
 		break;
 	}
@@ -267,7 +266,7 @@ bool srefresh(screen* const scr, bool clear)
 			strbufadd(&scr->strbuf, u8"\n", 1);
 		} else if (x != last_x + 1 || y != last_y) {
 			c8 mvseq[U16_WORST_PARAMSEQ_LEN(2)];
-			const usize mvseq_len = paramu16seq(mvseq, (u16[]){y, x}, 2, 'H');
+			const usize mvseq_len = u16paramseq(mvseq, (u16[]){y, x}, 2, 'H');
 			strbufadd(&scr->strbuf, mvseq, mvseq_len);
 		}
 
@@ -325,7 +324,7 @@ inline isize scordtoidx(const screen* scr, u16 x, u16 y)
 	return (sgetcorderr(scr, x, y) == ESC_OK) ? (y - 1) * scr->termsize.cols + (x - 1) : -1;
 }
 
-enum escerr ssetcp(screen* restrict scr, c32 c, u16 x, u16 y)
+enum escerr ssetcp(screen* scr, c32 c, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -335,7 +334,7 @@ enum escerr ssetcp(screen* restrict scr, c32 c, u16 x, u16 y)
 	return sgetcorderr(scr, x, y);
 }
 
-enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
+enum escerr ssetbgclr(screen* scr, struct termclr clr, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -346,7 +345,7 @@ enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 	}
 	return sgetcorderr(scr, x, y);
 }
-enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
+enum escerr ssetfgclr(screen* scr, struct termclr clr, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -357,7 +356,7 @@ enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, u16 x, u16 y)
 	}
 	return sgetcorderr(scr, x, y);
 }
-enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, u16 x, u16 y)
+enum escerr ssetclrpair(screen* scr, struct termclr bgclr, struct termclr fgclr, u16 x, u16 y)
 {
 	const isize idx = scordtoidx(scr, x, y);
 	if (idx != -1) {
@@ -381,7 +380,7 @@ enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y)
 	return sgetcorderr(scr, x, y);
 }
 
-void saddstr(screen* restrict scr, const c32* str32, usize strlen, u16 x, u16 y)
+void saddstr(screen* scr, const c32* str32, usize strlen, u16 x, u16 y)
 {
 	for (usize i = 0; i < strlen; ++i) {
 		ssetcp(scr, str32[i], x, y);

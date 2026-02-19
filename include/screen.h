@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <uchar.h>
 
-#include "escdef.h"
+#include "terminal.h"
 #include "termsize.h"
 
 struct rgb {
@@ -24,7 +24,7 @@ struct rgb {
 // see https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#8-16-colors
 #define CLR_CODE(c) ((struct termclr){.tag = CLRTAG_CODE, .val.code = c + 30})
 
-enum ENUMTYPE(clrtag, unsigned char) {
+enum clrtag {
 	CLRTAG_CODE = 1,
 	CLRTAG_RGB,
 	CLRTAG_ID, // 2 bits max 0b11
@@ -41,7 +41,7 @@ struct termclr {
 	union clrval val;
 };
 
-enum ENUMTYPE(clrcode, unsigned char) {
+enum clrcode {
 	CLRCODE_BLACK,
 	CLRCODE_RED,
 	CLRCODE_GREEN,
@@ -168,23 +168,20 @@ static inline enum escerr getcorderr(uint16_t x, uint16_t y) { return sgetcorder
 
 /** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
  * Returns flags of cordbounderrs given x and y. */
-enum escerr ssetcp(screen* restrict scr, char32_t c, uint16_t x, uint16_t y);
+enum escerr ssetcp(screen* scr, char32_t c, uint16_t x, uint16_t y);
 static inline enum escerr setcp(char32_t c, uint16_t x, uint16_t y) { return ssetcp(stdscr, c, x, y); }
 
 /** Sets the given bg color at (x, y) */
-enum escerr ssetbgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
+enum escerr ssetbgclr(screen* scr, struct termclr clr, uint16_t x, uint16_t y);
 static inline enum escerr setbgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetbgclr(stdscr, clr, x, y); }
 
 /** Sets the given fg color at (x, y) */
-enum escerr ssetfgclr(screen* restrict scr, struct termclr clr, uint16_t x, uint16_t y);
+enum escerr ssetfgclr(screen* scr, struct termclr clr, uint16_t x, uint16_t y);
 static inline enum escerr setfgclr(struct termclr clr, uint16_t x, uint16_t y) { return ssetfgclr(stdscr, clr, x, y); }
 
 /** Sets the given fg and bg colors at (x, y) */
-enum escerr ssetclrpair(screen* restrict scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
-static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y)
-{
-	return ssetclrpair(stdscr, bgclr, fgclr, x, y);
-}
+enum escerr ssetclrpair(screen* scr, struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
+static inline enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y) { return ssetclrpair(stdscr, bgclr, fgclr, x, y); }
 
 enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y);
 static inline enum escerr setvis(bool visible, uint16_t x, uint16_t y) { return ssetvis(stdscr, visible, x, y); }
@@ -193,6 +190,6 @@ enum escerr stogglevis(const screen* scr, uint16_t x, uint16_t y);
 static inline enum escerr togglevis(uint16_t x, uint16_t y) { return stogglevis(stdscr, x, y); }
 
 /** Calls ssetgphm for each grapheme in the string based from the fitst one */
-void saddstr(screen* restrict scr, const char32_t* str32, size_t strlen, uint16_t x, uint16_t y);
+void saddstr(screen* scr, const char32_t* str32, size_t strlen, uint16_t x, uint16_t y);
 static inline void addstr(const char32_t* str32, size_t strlen, uint16_t x, uint16_t y) { saddstr(stdscr, str32, strlen, x, y); }
 

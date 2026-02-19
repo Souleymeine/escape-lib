@@ -4,8 +4,6 @@
 #include <stddef.h>
 #include <uchar.h>
 
-#include "escdef.h"
-
 #define UTF8(s) (char8_t*)s
 
 #define MAX_UTF8_CU  4
@@ -14,7 +12,7 @@
 /** Describes the role of a codeunit (aka 'cu') in a utf8 string.
  * This enum can be used to process utf8 strings grapheme by grapheme instead of one 'cu' at a time.
  * see `cp_cnt`. */
-enum ENUMTYPE(cu_type, char) {
+enum cu_type {
 	CU_INVALID = -1,
 	CU_CONTINUATION,
 	CU_ASCII,

@@ -2,8 +2,7 @@
 
 #include <stdbit.h>
 #include <stddef.h>
-
-#include "escdef.h"
+#include <uchar.h>
 
 // Control Sequence Introducer
 #define CSI "\x1b["
@@ -13,15 +12,12 @@
 
 struct seqel {
 	union {
-		struct {
-			char* buf;
-			size_t len;
-		} str;
+		struct { char* buf; size_t len; } str;
 		char chr;
 		uint16_t uint16;
 		uint8_t uint8;
 	};
-	ENUMTYPE(enum, unsigned){
+	enum {
 		FMT_STR,
 		FMT_CHAR,
 		FMT_U16,
@@ -48,17 +44,17 @@ struct seqel {
 unsigned char cntdigits(uint16_t n);
 
 /**  */
-size_t seqcat(char8_t* restrict dest, const struct seqel* restrict elements, size_t n);
-
-/**
- * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 16 bit integer
- * And returns the length of said sequence
- */
-size_t paramu8seq(char8_t* restrict dest, const uint8_t* restrict params, size_t n, char end);
+size_t seqcat(char8_t* dest, const struct seqel* elements, size_t n);
 
 /**
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 8 bit integer (useful for style/color codes)
  * And returns the length of said sequence
  */
-size_t paramu16seq(char8_t* restrict dest, const uint16_t* restrict params, size_t n, char end);
+size_t u8paramseq(char8_t* dest, const uint8_t* params, size_t n, char end);
+
+/**
+ * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 16 bit integer
+ * And returns the length of said sequence
+ */
+size_t u16paramseq(char8_t* dest, const uint16_t* params, size_t n, char end);
 
