@@ -1,5 +1,4 @@
 -Wall
 -Wextra
 -std=c23
--D
-DEBUG
+-DDEBUG
