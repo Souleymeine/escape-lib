@@ -183,7 +183,7 @@ static inline void strbufadd(struct _strbuf** const strbuf, const c8* str, usize
 {
 	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
 		*strbuf = strbuf_grow(*strbuf);
-#if DEBUG
+#ifdef DEBUG
 		if (!(*strbuf)) {
 			fprintf(stderr, "Could not reallocate string buffer, exiting before segfault...\n");
 			exit(1);
