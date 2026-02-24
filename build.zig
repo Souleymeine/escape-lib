@@ -1,5 +1,9 @@
 const std = @import("std");
 const builtin = std.builtin;
+const LinkMode = builtin.LinkMode;
+const OptimizeMode = builtin.OptimizeMode;
+const LtoMode = std.zig.LtoMode;
+const Build = std.Build;
 
 // ----- Hardcoded config -----
 
@@ -12,6 +16,28 @@ const sources = &[_][]const u8{
     "src/terminal.c",
     "src/screen.c",
     "src/escseq.c",
+};
+const tests = &[_][]const u8{
+    "test/gradient.c",
+    "test/label_gradient.c",
+    "test/scralloc.c",
+    "test/scrtxt.c",
+    "test/seq.c",
+    "test/splat_gradient.c",
+};
+
+const base_flags = &[_][]const u8{
+    "-std=c23",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-ffreestanding",
+};
+const release_flags = &[_][]const u8{
+    "-Werror",
+};
+const debug_flags = &[_][]const u8{
+    "-g3",
 };
 
 const supported_targets = &[_]std.Target.Query{ // zig fmt: off
@@ -31,30 +57,27 @@ const supported_targets = &[_]std.Target.Query{ // zig fmt: off
 
 const lib_ver = std.SemanticVersion.parse(lib_ver_str) catch |e| @compileLog(e);
 
-fn getTestExeName(b: *std.Build, src_name: []const u8, linkage: builtin.LinkMode, optimize: builtin.OptimizeMode) ![]const u8 {
-    const prefix: []const u8 = "test-";
-    const suffix: []const u8 = switch (optimize) {
-        .Debug => "-g",
-        .ReleaseFast => "-rf",
-        .ReleaseSafe => "-rs",
-        .ReleaseSmall => "-rz",
-    };
+fn getTestExeName(b: *Build, src_name: []const u8, linkage: LinkMode, optimize: OptimizeMode) ![]const u8 {
+    var exe_name: std.ArrayList(u8) = try .initCapacity(b.allocator, 10 + src_name.len);
 
-    var exe_name: std.ArrayList(u8) = .empty;
-
-    try exe_name.appendSlice(b.allocator, prefix);
+    try exe_name.appendSlice(b.allocator, "test-");
     try exe_name.appendSlice(b.allocator, src_name);
     try exe_name.appendSlice(b.allocator, switch (linkage) {
-        .dynamic => "_d",
-        .static => "_s",
+        .dynamic => "-d",
+        .static => "-s",
     });
-    try exe_name.appendSlice(b.allocator, suffix);
+    try exe_name.appendSlice(b.allocator, switch (optimize) {
+        .Debug => "_g",
+        .ReleaseFast => "_rf",
+        .ReleaseSafe => "_rs",
+        .ReleaseSmall => "_rz",
+    });
 
     return try exe_name.toOwnedSlice(b.allocator);
 }
 
 fn getTestSourcePath(b: *std.Build, test_name: []const u8) !std.Build.LazyPath {
-    var src_path: std.ArrayList(u8) = .empty;
+    var src_path: std.ArrayList(u8) = try .initCapacity(b.allocator, test_dir.len + test_name.len + 2);
 
     try src_path.appendSlice(b.allocator, test_dir);
     try src_path.appendSlice(b.allocator, test_name);
@@ -63,81 +86,87 @@ fn getTestSourcePath(b: *std.Build, test_name: []const u8) !std.Build.LazyPath {
     return b.path(try src_path.toOwnedSlice(b.allocator));
 }
 
-pub fn build(b: *std.Build) !void {
-    const run_test_step = b.step("run", "Run the given test");
-    const build_test = b.option([]const u8, "test", "The test source file to build");
-    const linkage = b.option(builtin.LinkMode, "link", "Build libescape as a static or dynamically linked library.") orelse .static;
-    const optimize = b.standardOptimizeOption(.{});
-    const target = b.standardTargetOptions(.{ .whitelist = supported_targets });
-
-    const is_debug = (optimize == .Debug);
-
-    const libmod = b.addModule("escape", .{
-        .target = target,
-        .optimize = optimize,
-        .sanitize_c = if (is_debug) .full else .off,
-        .strip = !is_debug,
-        .link_libc = true,
-    });
-
-    const cflags = concat_flags: {
-        const base = &[_][]const u8{
-            "-std=c23",
-            "-Wall",
-            "-Wextra",
-        };
-        const release = &[_][]const u8{
-            "-Werror",
-        };
-        const debug = &[_][]const u8{
-            "-g3",
-        };
-        break :concat_flags (if (is_debug) (base ++ debug) else (base ++ release));
-    };
-
-    libmod.addCMacro(if (is_debug) "DEBUG" else "DNDEBUG", "");
-    libmod.addCSourceFiles(.{
+fn createLibescape(b: *Build, cmod_opts: Build.Module.CreateOptions, cflags: []const []const u8, lto: LtoMode, optimize: OptimizeMode, linkage: LinkMode) *Build.Step.Compile {
+    const lib_mod = b.addModule("escape", cmod_opts);
+    lib_mod.addCMacro(if (optimize == .Debug) "DEBUG" else "DNDEBUG", "");
+    lib_mod.addCSourceFiles(.{
         .files = sources,
         .flags = cflags,
     });
-
     const lib = b.addLibrary(.{
-        .name = if (is_debug) "escape_g" else "escape",
+        .name = if (optimize == .Debug) "escape_g" else "escape",
         .linkage = linkage,
-        .root_module = libmod,
+        .root_module = lib_mod,
         .version = lib_ver,
     });
-    lib.lto = if (linkage == .dynamic and !is_debug) .full else .none;
+    lib.lto = lto;
+    return lib;
+}
 
-    b.installArtifact(lib);
+fn createTestExe(b: *Build, lib: *Build.Step.Compile, cmod_opts: Build.Module.CreateOptions, cflags: []const []const u8, lto: LtoMode, test_name: []const u8, linkage: LinkMode, optimize: OptimizeMode) !*Build.Step.Compile {
+    const test_mod = b.addModule(test_name, cmod_opts);
+    test_mod.linkLibrary(lib);
+    test_mod.addCSourceFile(.{
+        .file = try getTestSourcePath(b, test_name),
+        .flags = cflags,
+    });
+    const test_exe = b.addExecutable(.{
+        .name = try getTestExeName(b, test_name, linkage, optimize),
+        .linkage = linkage,
+        .root_module = test_mod,
+    });
+    test_exe.lto = lto;
+    return test_exe;
+}
 
-    if (build_test) |test_name| {
-        // if (std.mem.eql(u8, test_name, "all")) {
-        //     // compile all tests
-        // }
-        const mod = b.addModule(test_name, .{
-            .target = target,
-            .optimize = optimize,
-            .sanitize_c = if (is_debug) .full else .off,
-            .strip = !is_debug,
-            .link_libc = true,
-        });
-        mod.linkLibrary(lib);
-        mod.addCSourceFile(.{
-            .file = try getTestSourcePath(b, test_name),
-            .flags = cflags,
-        });
+fn getModProperties(t: Build.ResolvedTarget, o: OptimizeMode, l: LinkMode, lto: *LtoMode, cmod_opts: *Build.Module.CreateOptions, cflags: *[]const []const u8) void {
+    const is_debug = (o == .Debug);
+    lto.* = if (l == .dynamic and !is_debug) .full else .none;
+    cmod_opts.* = .{
+        .target = t,
+        .optimize = o,
+        .sanitize_c = if (is_debug) .full else .off,
+        .strip = !is_debug,
+        .link_libc = true,
+    };
+    cflags.* = (if (is_debug) (base_flags ++ debug_flags) else (base_flags ++ release_flags));
+}
 
-        const test_exe = b.addExecutable(.{
-            .name = try getTestExeName(b, test_name, linkage, optimize),
-            .linkage = linkage,
-            .root_module = mod,
-        });
-        test_exe.lto = if (linkage == .dynamic and !is_debug) .full else .none;
+pub fn build(b: *Build) !void {
+    const run_test_step = b.step("run", "Run the given test");
 
-        const run_test_exe = b.addRunArtifact(test_exe);
-        run_test_step.dependOn(&run_test_exe.step);
+    const build_everything = b.option(bool, "everything", "Build everything for testing: libraries + tests + unit tests") orelse false;
+    const build_test = b.option([]const u8, "test", "The test source file to build");
+    const linkage = b.option(LinkMode, "link", "Build libescape as a static or dynamically linked library.") orelse .static;
+    const optimize = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{ .whitelist = supported_targets });
 
-        b.installArtifact(test_exe);
+    var lto: LtoMode = undefined;
+    var cmod_opts: Build.Module.CreateOptions = undefined;
+    var cflags: []const []const u8 = undefined;
+
+    // TODO : factor + fix broken control flow
+    if (build_everything) {
+        inline for ([_]OptimizeMode{ .Debug, .ReleaseSafe, .ReleaseFast, .ReleaseSmall }) |o| {
+            inline for ([_]LinkMode{ .dynamic, .static }) |l| {
+                getModProperties(target, o, l, &lto, &cmod_opts, &cflags);
+                const lib = createLibescape(b, cmod_opts, cflags, lto, o, l);
+                inline for (tests) |test_path| {
+                    const test_exe = try createTestExe(b, lib, cmod_opts, cflags, lto, test_path[test_dir.len .. test_path.len - 2], l, o);
+                    b.installArtifact(test_exe);
+                }
+                b.installArtifact(lib);
+            }
+        }
+    } else {
+        getModProperties(target, optimize, linkage, &lto, &cmod_opts, &cflags);
+        const lib = createLibescape(b, cmod_opts, cflags, lto, optimize, linkage);
+        if (build_test) |test_name| {
+            const test_exe = try createTestExe(b, lib, cmod_opts, cflags, lto, test_name, linkage, optimize);
+            run_test_step.dependOn(&b.addRunArtifact(test_exe).step);
+            run_test_step.dependOn(b.getInstallStep()); // always install on test run
+            b.installArtifact(test_exe);
+        }
+        b.installArtifact(lib);
     }
 }

@@ -28,4 +28,5 @@ int main(int argc, char* argv[])
 
 
 	cleanup_term();
+	return 0;
 }

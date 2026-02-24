@@ -21,5 +21,6 @@ int main(int argc, char* argv[])
 
 	getchar();
 	cleanup_term();
+	return 0;
 }
 

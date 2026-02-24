@@ -15,5 +15,7 @@ int main(int argc, char* argv[])
 	char8_t paramseq[100];
 	const size_t paramseqlen = u8paramseq(paramseq, (uint8_t[]){48, 2, 125, 50, 25}, 5, 'm');
 	printf("%.*s\n", (int)paramseqlen, paramseq);
+
+	return 0;
 }
 
