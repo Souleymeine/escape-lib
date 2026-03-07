@@ -16,6 +16,7 @@ static struct termios s_termattr;
 #elif _WIN32
 static HANDLE stdin_hndl;
 static HANDLE stdout_hndl;
+static HANDLE stderr_hndl;
 static DWORD s_stdin_mode;
 static DWORD s_og_stdin_mode;
 static DWORD s_og_stdout_mode;
@@ -37,6 +38,7 @@ void init_term()
 #elif _WIN32
 	stdin_hndl  = GetStdHandle(STD_INPUT_HANDLE);
 	stdout_hndl = GetStdHandle(STD_OUTPUT_HANDLE);
+	stderr_hndl = GetStdHandle(STD_ERROR_HANDLE);
 	GetConsoleMode(stdin_hndl, &s_og_stdin_mode);
 	GetConsoleMode(stdout_hndl, &s_og_stdout_mode);
 
@@ -81,11 +83,12 @@ int set_termflags(termstatefl flags)
 	}
 
 	c8 seq[14];
-	const usize seqlen = seqcat(seq,
-	                            (struct seqel[]){SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
-	                                             SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
-	                            6);
-	termprint(seq, seqlen);
+	const usize seqlen = seqcat(seq, (struct seqel[]){
+		SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
+	    SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
+		6
+	);
+	termprint(STDOUT, seq, seqlen);
 
 	s_flags = flags;
 	return 0;
@@ -105,16 +108,22 @@ const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
 const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
 #endif
 
-bool termprint(const c8* buf, usize len)
+bool termprint(enum stdstream stream, const c8* buf, usize len)
 {
-	long bytes_written;
+	isize bytes_written;
 #if __unix__
-	bytes_written = write(STDOUT_FILENO, buf, len);
-	if (bytes_written == -1 || bytes_written != (long)len) {
+	bytes_written = write(stream, buf, len); // stream directly maps to POSIX fd
+	if (bytes_written == -1 || bytes_written != (isize)len) {
 		return true;
 	}
 #elif _WIN32
-	if (WriteConsole(stdout_hndl, buf, &bytes_written, nullptr) || bytes_written != (long)len) {
+	uint hndl;
+	switch(stream) {
+	case STDOUT: hndl = stdout_hndl; break;
+	case STDIN:  hndl = stdin_hndl;  break;
+	case STDERR: hndl = stderr_hndl; break;
+	}
+	if (WriteConsole(hndl, buf, &bytes_written, nullptr) || bytes_written != (isize)len) {
 		return true;
 	}
 #endif
@@ -126,7 +135,7 @@ void cleanup_term()
 	// freescr(stdscr);
 	// Deallocating when ending the program is unnecessary, the OS will do it faster afterwards
 	// Fight me.
-	// TODO : get termfalgs when call init_term instead of setting 0
+	// TODO : get termfalgs when calling init_term instead of setting 0
 	set_termflags(0);
 
 #if _WIN32
