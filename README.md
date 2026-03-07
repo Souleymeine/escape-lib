@@ -1,6 +1,6 @@
 # NOT READY FOR USE. THERE IS ABSOLUTELY NO WARRANTY.
 
-TODO : Describe project and its motivation
+TODO : Describe project and its motivations
 
 
 This project uses [**semantic versioning**](https://semver.org/), enforced by `build.zig` ([more info about the Zig build system](https://ziglang.org/learn/build-system/))
@@ -59,10 +59,10 @@ The only things required to understand this library's source code are the follow
 - The C programming language in its C23 standard (last stable standard at the time of this commit).
 - These naming conventions you'll come across quite often:
     - `esc` is short for **esc**ape, the library's name, which is a funny abbreviation for *escape sequence*, because that's what the library deals with.
-    - `cu` refers to a UTF-8 for **c**ode **u**nit
-    - `cp` refers to a Unicode **c**ode**p**oint
+    - [`cu`](https://developer.mozilla.org/docs/Glossary/Code_unit) refers to a UTF-8 for **c**ode **u**nit
+    - [`cp`](https://developer.mozilla.org/docs/Glossary/Code_point) refers to a Unicode **c**ode**p**oint
 - These macros:
-    - ESC_ERRUNION(T) expands to a tagged union (struct containing union + which value is active) to mark functions that can return errors or some value of type T.
+    - `ESC_ERRUNION(T)` expands to a tagged union (struct containing union + which value is active) to declare functions that can return an error (of some enum type defined as such) or some value of type `T`.
 
 
 ## TODO
