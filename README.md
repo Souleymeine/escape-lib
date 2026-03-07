@@ -70,6 +70,7 @@ They respectively refer to the smallest bit of information in a utf8 string (cod
 - [ ] Support OpenGL/Vulkan surfaces
 - [ ] Parallel screen rendering?
 - [ ] 24bit color driver for Linux/BSD's tty?
+- [ ] Try compiling and running with [Fil-C](https://fil-c.org/)
 ## After version 1.0.0 (stable)
 Bindings for
 - [ ] C++
