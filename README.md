@@ -7,7 +7,10 @@ This project uses [**semantic versioning**](https://semver.org/), enforced by `b
 
 ## Developpement scheme
 This project's branches names match the following regular expression : `(feature/|rework/|bugfix/|goal/)[a-zA-Z][-a-zA-Z0-9]*`.
-Before naming a branch, it's name can be tested with `$ echo "branch_name" | grep -E "[insert the regexp above]"`
+
+Before naming a branch, it's name can be tested with `$ echo "branch_name" | grep -E "[insert the regexp above]"`.
+
+
 Depending on the category, the branch
 - **goal**    : fully implements a draft for a desired feature or use case with existing library code, with the goal of re-implementing said draft with a future **feature** branches. A single **goal** branch may have multiple follow up **feature** branches, or none, if the draft is deemed acceptable as-is and thus only adds one example in `test/`.
 - **feature** : adds a new feature, incrementing the minor or the major version if it includes breaking changes.
