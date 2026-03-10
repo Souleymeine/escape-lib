@@ -98,7 +98,9 @@ fn installStep(
         .version = lib_ver,
     });
     libescape.lto = if (lib_linkage == .dynamic and !is_debug) .full else .none;
-    if (emit_asm) try emitAssembly(b, libescape);
+    if (emit_asm) {
+        try emitAssembly(b, libescape);
+    }
 
     if (build_tests) |test_paths| for (test_paths) |test_path| {
         const test_exe_mod = b.addModule(test_path, cmod_opts);
@@ -125,9 +127,15 @@ fn installStep(
             .root_module = test_exe_mod,
         });
         test_exe.lto = if (is_debug) .none else .full;
-        if (emit_asm) try emitAssembly(b, test_exe);
+        if (emit_asm) {
+            try emitAssembly(b, test_exe);
+        }
         if (run_test_step) |run_step| {
-            run_step.dependOn(&b.addRunArtifact(test_exe).step);
+            const run_cmd = b.addRunArtifact(test_exe);
+            if (b.args) |args| {
+                run_cmd.addArgs(args);
+            }
+            run_step.dependOn(&run_cmd.step);
             run_step.dependOn(b.getInstallStep()); // always install on run step
         }
         b.installArtifact(test_exe);
