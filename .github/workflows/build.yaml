@@ -15,9 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - uses: fluentci-io/setup-fluentci@v5
         with:
-          packages: zig
-          version: 1.0
-      - run: zig build -Deverything=true
+          wasm: true
+          plugin: .
+          args: |
+            build -Deverything=true --summary all
+          working-directory: example
+        env:
+          ZIG_VERSION: 0.15.2
 
