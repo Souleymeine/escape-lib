@@ -18,5 +18,6 @@ int main()
 
 	getchar();
 	cleanup_term();
+	return 0;
 }
 

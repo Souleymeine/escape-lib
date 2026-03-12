@@ -33,6 +33,12 @@ enum escerr {
 	ESC_ERR_CP,
 };
 
+enum stdstream {
+	STDOUT = 0,
+	STDIN  = 1,
+	STDERR = 2,
+};
+
 /* Initialize some states variables and gathers information about the terminal the program is
  * running in. Required for escape sequences to work properly. */
 void init_term();
@@ -50,11 +56,13 @@ void init_flags(termstatefl flags);
 /* Returns a pointer to the program's static terminal flags. */
 const termstatefl* get_termflags();
 
+
 /**
  * Simple UTF-8 unbuffered cross platform terminal writer
  * Returns `true` if len doesn't match how many bytes were written or if nothing was written, false otherwise.
  * */
-bool termprint(const char8_t* buf, size_t len);
+bool termprint(enum stdstream stream, const char8_t* buf, size_t len);
+#define ESC_LOG_ERR(s) termprint(STDERR, s, sizeof(s))
 
 /* If called bedore `init_term`/`init_flags`, stdscr will use a virtual screen by default. */
 void usevscr();

@@ -1,9 +1,7 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-
 #if __unix__
 #include <sys/mman.h>
+#include <unistd.h>
 #elif _WIN32
 #include <memoryapi.h>
 
@@ -183,10 +181,10 @@ static inline void strbufadd(struct _strbuf** const strbuf, const c8* str, usize
 {
 	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
 		*strbuf = strbuf_grow(*strbuf);
-#if DEBUG
+#ifdef DEBUG
 		if (!(*strbuf)) {
-			fprintf(stderr, "Could not reallocate string buffer, exiting before segfault...\n");
-			exit(1);
+			ESC_LOG_ERR(u8"Could not reallocate string buffer, exiting before segfault...\n");
+			_Exit(1);
 		}
 #endif
 	}
@@ -286,7 +284,7 @@ bool srefresh(screen* const scr, bool clear)
 		last_y = y;
 	}
 
-	if (termprint(scr->strbuf->buf, scr->strbuf->cursor)) {
+	if (termprint(STDOUT, scr->strbuf->buf, scr->strbuf->cursor)) {
 		return true;
 	}
 

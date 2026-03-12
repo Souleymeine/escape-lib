@@ -1,5 +1,5 @@
+# Local configuration for clangd
 -Wall
 -Wextra
 -std=c23
--D
-DEBUG
+-DDEBUG

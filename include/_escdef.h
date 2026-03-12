@@ -58,7 +58,6 @@ typedef char32_t c32;
 
 #if __GNUC__ || __clang__
 typedef _Float16 f16;
-typedef __float128 f128;
 #endif
 typedef float f32;
 typedef double f64;
@@ -78,7 +77,6 @@ typedef long double f80;
 
 #if __GNUC__ || __clang__
 ASSERT_SIZE_MSG(f16, 2);
-ASSERT_SIZE_MSG(f128, 16);
 #endif
 ASSERT_SIZE_MSG(f32, 4);
 ASSERT_SIZE_MSG(f64, 8);

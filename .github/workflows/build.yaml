@@ -1,0 +1,20 @@
+name: Internals exposure Verification and Build Integrity
+run-name: test builds based on changes pushed by ${{ github.actor }}
+on: [push]
+jobs:
+  check-exposed-internal-typedefs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          grep -zq '#include "_escdef.h"' ./include/*.h \
+            && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
+            && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
+            || echo "No internal typedefs included in public library headers, everything is fine."
+  build-everything:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mlugg/setup-zig@v2.2.1
+      - run:  zig build -Deverything=true
+
