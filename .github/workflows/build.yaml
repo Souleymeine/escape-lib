@@ -19,5 +19,5 @@ jobs:
         with:
           packages: zig
           version: 1.0
-        run: ~/zig-bin/zig build -Deverything=true
+      - run: zig build -Deverything=true
 
