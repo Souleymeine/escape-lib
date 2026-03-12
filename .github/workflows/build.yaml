@@ -15,13 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: fluentci-io/setup-fluentci@v5
-        with:
-          wasm: true
-          plugin: .
-          args: |
-            build -Deverything=true --summary all
-          working-directory: example
-        env:
-          ZIG_VERSION: 0.15.2
+      - uses: mlugg/setup-zig@v2.2.1
+      - run:  zig build -Deverything=true
 
