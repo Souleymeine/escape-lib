@@ -1,7 +1,7 @@
 const std = @import("std");
-const builtin = std.builtin;
-const LinkMode = builtin.LinkMode;
-const OptimizeMode = builtin.OptimizeMode;
+const path = std.fs.path;
+const LinkMode = std.builtin.LinkMode;
+const OptimizeMode = std.builtin.OptimizeMode;
 const LtoMode = std.zig.LtoMode;
 const Build = std.Build;
 
@@ -45,12 +45,12 @@ const debug_flags: []const []const u8 = &.{
 // ----------------------------
 
 pub fn build(b: *Build) !void {
-    const run_test_step = b.step("run", "Run the given test");
+    const run_test_step = b.step("run", "Run the given source file linked against libescape");
 
-    const test_source = b.option([]const u8, "test", "The test source file to build");
-    const linkage = b.option(LinkMode, "link", "Build libescape as a static or dynamically linked library") orelse .static;
-    const everything = b.option(bool, "everything", "Build everything for testing: libraries + tests") orelse false;
-    const emit_asm = b.option(bool, "asm", "Emits assembly output of the current build for both tests and libraries.") orelse false;
+    const exe_source = b.option([]const u8, "exesrc", "Build and link the given source file against libescape");
+    const linkage = b.option(LinkMode, "link", "Build libescape") orelse .static;
+    const everything = b.option(bool, "everything", "Build everything (libraries + tests)") orelse false;
+    const emit_asm = b.option(bool, "asm", "Whether to emit assembly output of the current build for both 'exesrc's and libraries") orelse false;
 
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
@@ -62,7 +62,7 @@ pub fn build(b: *Build) !void {
             }
         }
     } else {
-        try installStep(b, emit_asm, if (test_source) |source| &.{source} else null, run_test_step, target, optimize, linkage);
+        try installStep(b, emit_asm, if (exe_source) |source| &.{source} else null, run_test_step, target, optimize, linkage);
     }
 }
 
@@ -71,8 +71,8 @@ const lib_ver = std.SemanticVersion.parse(lib_ver_str) catch @compileError("'" +
 fn installStep(
     b: *Build,
     emit_asm: bool,
-    build_tests: ?[]const []const u8,
-    run_test_step: ?*Build.Step,
+    build_exes: ?[]const []const u8,
+    run_step: ?*Build.Step,
     target: Build.ResolvedTarget,
     optimize: OptimizeMode,
     lib_linkage: LinkMode,
@@ -103,20 +103,21 @@ fn installStep(
         try emitAssembly(b, libescape);
     }
 
-    if (build_tests) |test_paths| for (test_paths) |test_path| {
-        const test_exe_mod = b.addModule(test_path, cmod_opts);
-        test_exe_mod.linkLibrary(libescape);
-        test_exe_mod.addCSourceFile(.{
-            .file = b.path(test_path),
+    if (build_exes) |src_paths| for (src_paths) |src_path| {
+        const exe_mod = b.addModule(src_path, cmod_opts);
+        exe_mod.linkLibrary(libescape);
+        exe_mod.addCSourceFile(.{
+            .file = b.path(src_path),
             .flags = cflags,
         });
-        const test_exe = b.addExecutable(.{
-            .name = b.fmt("test-{s}-{c}_{s}", .{
-                test_path["test/".len .. test_path.len - 2], // remove dir and file extension
-                switch (lib_linkage) {
-                    .dynamic => @as(u8, 'd'),
-                    .static => @as(u8, 's'),
-                },
+        const exe = b.addExecutable(.{
+            .name = b.fmt("{s}-{s}-{c}{s}", .{
+                path.dirname(src_path) orelse @panic("Source files linked against libescape must not be in the project's root folder!"),
+                path.stem(src_path),
+                @as(u8, switch (lib_linkage) { // Cast is necessary since char literals are comptime_int
+                    .dynamic => 'd',
+                    .static => 's',
+                }),
                 switch (optimize) {
                     .Debug => "g",
                     .ReleaseFast => "rf",
@@ -125,25 +126,26 @@ fn installStep(
                 },
             }),
             .linkage = .dynamic,
-            .root_module = test_exe_mod,
+            .root_module = exe_mod,
         });
-        test_exe.lto = if (is_debug) .none else .full;
+        exe.lto = if (is_debug) .none else .full;
         if (emit_asm) {
-            try emitAssembly(b, test_exe);
+            try emitAssembly(b, exe);
         }
-        if (run_test_step) |run_step| {
-            const run_cmd = b.addRunArtifact(test_exe);
+        if (run_step) |step| {
+            const run_cmd = b.addRunArtifact(exe);
             if (b.args) |args| {
                 run_cmd.addArgs(args);
             }
-            run_step.dependOn(&run_cmd.step);
-            run_step.dependOn(b.getInstallStep()); // always install on run step
+            step.dependOn(&run_cmd.step);
+            step.dependOn(b.getInstallStep()); // always install on run step
         }
-        b.installArtifact(test_exe);
+        b.installArtifact(exe);
     };
     b.installArtifact(libescape);
 }
 
+// https://codeberg.org/ziglang/zig/issues/31415
 fn emitAssembly(b: *Build, artifact: *Build.Step.Compile) !void {
     const install_asm = b.addInstallBinFile(artifact.getEmittedAsm(), b.fmt("{s}.s", .{artifact.name}));
     b.getInstallStep().dependOn(&install_asm.step);
