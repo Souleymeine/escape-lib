@@ -1,5 +1,6 @@
 # build.zig
 # individual file types need not to be included since they are all under these two
+zig-bin/
 zig-out/
 .zig-cache/
 
