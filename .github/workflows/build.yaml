@@ -21,17 +21,17 @@ jobs:
         uses: actions/cache@v5
         id: cache-zig
         with:
-          key: ${{ secrets.ZIG_VERSION }}
+          key: 4ubuntu1
           path: "~/zig-bin"
       - name: Install Zig
         env:
           CACHE_HIT: ${{ steps.cache-zig.outputs.cache-hit }}
-          ZIG_VERSION: ${{ secrets.ZIG_VERSION }}
+          ZIG_VERSION: 4ubuntu1
         run: |
           if [[ "$CACHE_HIT" == 'true' ]]; then
             sudo cp --verbose --force --recursive ~/zig-bin/* /
           else
-            sudo apt-get install --yes valgrind="$ZIG_VERSION"
+            sudo apt-get install --yes zig="4ubuntu1"
             mkdir -p ~/zig-bin
             sudo dpkg -L zig | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/zig-bin/
           fi
