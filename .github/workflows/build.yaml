@@ -1,44 +1,40 @@
-# Source - https://stackoverflow.com/a/59277514
-# Posted by smac89, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-03-12, License - CC BY-SA 4.0
-- name: Cache Zig
-  uses: actions/cache@v5
-  id: cache-zig
-  with:
-      path: "~/zig-bin"
-      key: ${{secrets.ZIG_VERSION}}
-- name: Install Zig
-  env:
-    CACHE_HIT: ${{steps.cache-zig.outputs.cache-hit}}
-    ZIG_VERSION: ${{secrets.ZIG_VERSION}}
-  run: |
-      if [[ "$CACHE_HIT" == 'true' ]]; then
-        sudo cp --verbose --force --recursive ~/zig-bin/* /
-      else
-        sudo apt-get install --yes valgrind="$ZIG_VERSION"
-        mkdir -p ~/zig-bin
-        sudo dpkg -L zig | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/zig-bin/
-      fi
-- name: Internals exposure Verification and Build Integrity
-  run-name: test builds based on changes pushed by ${{ github.actor }}
-  on: [push]
-  jobs:
-    check-exposed-internal-typedefs:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v5
-        - run: |
-            grep -zq '#include "_escdef.h"' ./include/*.h \
-              && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
-              && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
-              || echo "No internal typedefs included in public library headers, everything is fine."
-    build-every-thing:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v5
-        - uses: awalsh128/cache-apt-pkgs-action@latest
-          with:
-            packages: zig
-            version: 1.0
-        - run: ~/zig-bin/zig build -Deverything=true
+name: Internals exposure Verification and Build Integrity
+run-name: test builds based on changes pushed by ${{ github.actor }}
+on: [push]
+jobs:
+  check-exposed-internal-typedefs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          grep -zq '#include "_escdef.h"' ./include/*.h \
+            && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
+            && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
+            || echo "No internal typedefs included in public library headers, everything is fine."
+  build-every-thing:
+    runs-on: ubuntu-latest
+    steps:
+    # Source - https://stackoverflow.com/a/59277514
+    # Posted by smac89, modified by community. See post 'Timeline' for change history
+    # Retrieved 2026-03-12, License - CC BY-SA 4.0
+    - name: Cache Zig
+      uses: actions/cache@v5
+      id: cache-zig
+      with:
+          path: "~/zig-bin"
+          key: ${{secrets.ZIG_VERSION}}
+    - name: Install Zig
+      env:
+        CACHE_HIT: ${{steps.cache-zig.outputs.cache-hit}}
+        ZIG_VERSION: ${{secrets.ZIG_VERSION}}
+      run: |
+          if [[ "$CACHE_HIT" == 'true' ]]; then
+            sudo cp --verbose --force --recursive ~/zig-bin/* /
+          else
+            sudo apt-get install --yes valgrind="$ZIG_VERSION"
+            mkdir -p ~/zig-bin
+            sudo dpkg -L zig | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/zig-bin/
+          fi
+      - uses: actions/checkout@v5
+      - run: ~/zig-bin/zig build -Deverything=true
 
