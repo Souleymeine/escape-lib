@@ -119,7 +119,6 @@ The only things required to understand this library's source code are the follow
 - These macros:
     - `ESC_ERRUNION(T)` expands to a tagged union (struct containing union + which value is active) to declare functions that can return an error (of some enum type defined as such) or some value of type `T`.
 
-
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
 
@@ -144,6 +143,7 @@ The only things required to understand this library's source code are the follow
 - [ ] Parallel screen rendering?
 - [ ] 24bit color driver for Linux/BSD's tty?
 - [ ] Try compiling and running with [Fil-C](https://fil-c.org/)
+- [ ] Doom in the linux kernel's tty, with mouse support!
 ## After version 1.0.0 (stable)
 - [ ] API for grapheme clusters
 Bindings for
