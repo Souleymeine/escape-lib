@@ -14,28 +14,10 @@ jobs:
   build-everything:
     runs-on: ubuntu-latest
     steps:
-      # Source - https://stackoverflow.com/a/59277514
-      # Posted by smac89, modified by community. See post 'Timeline' for change history
-      # Retrieved 2026-03-12, License - CC BY-SA 4.0
-      - name: Cache Zig
-        uses: actions/cache@v5
-        id: cache-zig
-        with:
-          key: 4ubuntu1
-          path: "~/zig-bin"
-      - name: Install Zig
-        env:
-          CACHE_HIT: ${{ steps.cache-zig.outputs.cache-hit }}
-          ZIG_VERSION: 4ubuntu1
-        run: |
-          if [[ "$CACHE_HIT" == 'true' ]]; then
-            sudo cp --verbose --force --recursive ~/zig-bin/* /
-          else
-            sudo apt-get install --yes zig="4ubuntu1"
-            mkdir -p ~/zig-bin
-            sudo dpkg -L zig | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/zig-bin/
-          fi
       - uses: actions/checkout@v5
-      - name: Run Build
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: zig
+          version: 1.0
         run: ~/zig-bin/zig build -Deverything=true
 
