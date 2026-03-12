@@ -11,7 +11,7 @@ jobs:
             && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
             && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
             || echo "No internal typedefs included in public library headers, everything is fine."
-  build-every-target:
+  build-every-thing:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -19,5 +19,5 @@ jobs:
         with:
           packages: zig
           version: 1.0
-      - run: zig build everything
+      - run: zig build -Deverything=true
 
