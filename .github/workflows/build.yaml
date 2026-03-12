@@ -11,23 +11,23 @@ jobs:
             && echo -e "\ntypedefs in ./include/_escdef.h are for INTERNAL. USE. ONLY.\n" \
             && grep -i -B256 '#include "_escdef.h"' ./include/*.h \
             || echo "No internal typedefs included in public library headers, everything is fine."
-  build-every-thing:
+  build-everything:
     runs-on: ubuntu-latest
     steps:
-    # Source - https://stackoverflow.com/a/59277514
-    # Posted by smac89, modified by community. See post 'Timeline' for change history
-    # Retrieved 2026-03-12, License - CC BY-SA 4.0
-    - name: Cache Zig
-      uses: actions/cache@v5
-      id: cache-zig
-      with:
-          path: "~/zig-bin"
-          key: ${{secrets.ZIG_VERSION}}
-    - name: Install Zig
-      env:
-        CACHE_HIT: ${{steps.cache-zig.outputs.cache-hit}}
-        ZIG_VERSION: ${{secrets.ZIG_VERSION}}
-      run: |
+      # Source - https://stackoverflow.com/a/59277514
+      # Posted by smac89, modified by community. See post 'Timeline' for change history
+      # Retrieved 2026-03-12, License - CC BY-SA 4.0
+      - name: Cache Zig
+        uses: actions/cache@v5
+        id: cache-zig
+        with:
+            path: "~/zig-bin"
+            key: ${{secrets.ZIG_VERSION}}
+      - name: Install Zig
+        env:
+          CACHE_HIT: ${{steps.cache-zig.outputs.cache-hit}}
+          ZIG_VERSION: ${{secrets.ZIG_VERSION}}
+        run: |
           if [[ "$CACHE_HIT" == 'true' ]]; then
             sudo cp --verbose --force --recursive ~/zig-bin/* /
           else
@@ -36,5 +36,6 @@ jobs:
             sudo dpkg -L zig | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/zig-bin/
           fi
       - uses: actions/checkout@v5
-      - run: ~/zig-bin/zig build -Deverything=true
+      - name: Run Build
+        run: ~/zig-bin/zig build -Deverything=true
 
