@@ -1,9 +1,60 @@
 # NOT READY FOR USE. THERE IS ABSOLUTELY NO WARRANTY.
 
-TODO : Describe project and its motivations
+TODO : rewrite all that
 
+*libescape* is a cross platform C library that aims at manipulating terminals in the most efficient way possible, making graphics inside terminals possible and facilitating IO, TUIs and CLI tools in general, while being as efficient as possible in terms of speed, memory footprint, latency and binary size.
+*libescape* is also a replacement for termcaps/terminfo (and all the tools that build on top of it, such as tput) as well as a backend for any rendering, whether that's for 3D applications using modern graphics APIs, games, or for UI layout libraries such as [Clay](https://www.nicbarker.com/clay).
+
+The rationale for libescape could be summerized as such :
+
+**Produce the shortest string that represents the declared state provided by the user, as fast as possible, on any terminal or terminal emulator, on any platform ; considering the user must be able to do everything that their terminal *can* do.**
+
+
+The name "escape" refers to [*escape sequences*](https://en.wikipedia.org/wiki/Escape_sequence), which is what it mainly deals with to do anything else than line-by-line plain text. Using those, you can write the string returned by the library to `stdout` and see what you declared in your code. You could also write it to any file so you could store advanced ascii art in your filesystem for example!
+
+It is an alternative to other CLI libraries and does not claim to compete with any (...yet! except [ncurses](https://invisible-island.net/ncurses/ncurses.html) maybe) and which tries to offer a solution the lack of standard in terminals and terminal emulators without forcing any paradigm on the user nor forcing them to wait for some maintainer to update a termcaps database once every decade.
+
+*libescape* is separated into multiple sub-libraries :
+- esc-core, terminal capabilities/info detection, low level terminal control and escape sequence management
+- esc-io
+- esc-rndr, the rendering backend
+- esc-2d, depends on esc-rndr, provides a way to do TUIs as well as any 2d graphics
+- esc-img, depends on esc-rndr, the in-terminal image rendering (whether that's using dedicated protocols or regular color escape sequences)
+- esc-3d, depends on esc-img, provides a thin communication layer with Vulkan, OpenGL and SDL3's GPU API as well as a simple 3D software renderer
+
+TODO : provide a graph to visualize internal dependecies in a few seconds instead of a wall of text
+
+All those sub-libraries depend on esc-core.
+This clear separation allows users to embed libescape into their projects without importing any bloat, although you could argue statically linking with LTO should be enough or even better in that regard.
+
+It mainly helps myself (the original creator of the project) to not add any superfluous feature to what's strictly necessary for a certain use-case, whilst still allowing myself to build on top of it. That separation also ensures a certain quality in design as integrating with core, whether that's for sub-libraries or any 3rd-party code, must is as easy and *overhead-free* as possible.
+The default `libescape.(dll|so|a|lib)` is an amalgamation of all the listed sub-libraries for convinience.
 
 This project uses [**semantic versioning**](https://semver.org/), enforced by `build.zig` ([more info about the Zig build system](https://ziglang.org/learn/build-system/))
+
+## Build from source
+**For any OS on any architecture : `zig build [options]`**
+That's it!
+
+The only dependency of this project is [Zig](https://ziglang.org/), both as a programming language (see `build.zig`) and as a toolchain.
+To compile the project from source, install Zig globally on your system and refer to `zig build -h` for usage.
+If you prefer using a local installation of Zig, this is also possible : [Download the latest version of Zig](https://ziglang.org/download/), unpack the archive and place it under the project's root directory as `zig-bin`. You can now do `zig-bin/zig build -h`!
+You can compile to and from any supported platform, that is every major OS, every major ABI and every major ISA, listed in `zig targets`.
+One goal of libescape is to be as cross-platform as possible.
+
+
+**HOWEVER : This project uses the C23 standard of the C programming language, which isn't widely supported at the time of this commit**.
+
+As Zig only bundles libc implementations, **the ability to cross compile from anywhere to anything doesn't prevent compiler errors due to said libc implementations not being up to date**. We can however, differentiate compiler errors that are caused by libc implementations not being up to date with the latest standard and the library's source code not covering a certain libc implementation regardless of the version.
+
+**If you get any compiler error other than something like**
+- `unknown type name some_C23_type`
+- `'<some_C23_header.h>' file not found`
+- `unkown symbol C23_function` (that lives in `'<some_header_C23_(re)defined.h>'`)
+**then it is a bug and *it needs to be fixed*.**
+
+
+Also note that Zig is still not stable, bugs during build unrelated to the issues presented above *might* happen.
 
 ## Developpement scheme
 This project's branches names match the following regular expression : `(feature/|rework/|bugfix/|goal/)[a-zA-Z][-a-zA-Z0-9]*`.
@@ -94,7 +145,7 @@ The only things required to understand this library's source code are the follow
 - [ ] 24bit color driver for Linux/BSD's tty?
 - [ ] Try compiling and running with [Fil-C](https://fil-c.org/)
 ## After version 1.0.0 (stable)
-- [ ] API for grapheme clusters in core
+- [ ] API for grapheme clusters
 Bindings for
 - [ ] Zig
 - [ ] C++
