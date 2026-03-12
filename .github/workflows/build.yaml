@@ -21,8 +21,8 @@ jobs:
         uses: actions/cache@v5
         id: cache-zig
         with:
-          path: "~/zig-bin"
           key: ${{ secrets.ZIG_VERSION }}
+          path: "~/zig-bin"
       - name: Install Zig
         env:
           CACHE_HIT: ${{ steps.cache-zig.outputs.cache-hit }}
