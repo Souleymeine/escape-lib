@@ -1,10 +1,10 @@
 #include <limits.h>
 #include <stdbit.h>
+#include <uchar.h>
 
-#include "../include/_escdef.h"
-#include "../include/utf.h"
+#include "../../include/rndr.h"
 
-enum cu_type get_cu_type(c8 c)
+enum cu_type get_cu_type(char8_t c)
 {
 	/** See https://www.rfc-editor.org/rfc/rfc3629#section-3
 	 *  and https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G27288
@@ -20,7 +20,7 @@ enum cu_type get_cu_type(c8 c)
 	if (stdc_bit_width(c) < 8) {
 		return CU_ASCII;
 	} else {
-		const uchar leading_ones = stdc_leading_ones(c);
+		const unsigned char leading_ones = stdc_leading_ones(c);
 		if (stdc_first_leading_zero(c) == leading_ones + 1u) {
 			if (leading_ones == 1) {
 				return CU_CONTINUATION; // Continuation bytes don't represent a gphm of size 1 (an ASCII char)

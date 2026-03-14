@@ -5,10 +5,8 @@
 #include <unistd.h>
 #endif
 
-#include "../include/_escdef.h"
-#include "../include/escseq.h"
-#include "../include/screen.h"
-#include "../include/terminal.h"
+#include "../../include/_escdef.h"
+#include "../../include/core.h"
 
 
 #if __unix__
@@ -27,7 +25,6 @@ static termstatefl s_flags    = 0;
 static bool s_stdscr_use_vscr = false;
 static bool s_enabled_altbuf  = false;
 
-screen* stdscr;
 
 void usevscr() { s_stdscr_use_vscr = true; }
 

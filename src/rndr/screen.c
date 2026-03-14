@@ -4,16 +4,11 @@
 #include <unistd.h>
 #elif _WIN32
 #include <memoryapi.h>
-
-#include "terminal.h"
 #endif
 
-#include "../include/_escdef.h"
-#include "../include/escseq.h"
-#include "../include/screen.h"
-#include "../include/terminal.h"
-#include "../include/termsize.h"
-#include "../include/utf.h"
+#include "../../include/_escdef.h"
+#include "../../include/core.h"
+#include "../../include/rndr.h"
 
 // Default values
 static usize s_strbuf_init_size   = 4096;
