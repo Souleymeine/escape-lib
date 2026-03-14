@@ -10,11 +10,11 @@ const Build = std.Build;
 const lib_ver_str = "0.1.0";
 
 const sources: []const []const u8 = &.{
-    "src/utf.c",
-    "src/termsize.c",
-    "src/terminal.c",
-    "src/screen.c",
-    "src/escseq.c",
+    "src/core/term.c",
+    "src/core/termsize.c",
+    "src/core/escseq.c",
+    "src/rndr/utf.c",
+    "src/rndr/screen.c",
 };
 const tests: []const []const u8 = &.{
     "test/gradient.c",
