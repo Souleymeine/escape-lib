@@ -1,123 +1,174 @@
 #pragma once
 
-#include <stddef.h>
+#include <stdint.h>
 #include <uchar.h>
 
-#include "core.h"
+#include "err.h"
 
-struct rgb {
+struct esc_rgb {
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
 };
 
-enum clrtag {
-	CLRTAG_CODE = 0b01,
-	CLRTAG_RGB  = 0b10,
-	CLRTAG_ID   = 0b11,
+enum esc_clrtag {
+	ESC_CLRTAG_CODE = 0b01,
+	ESC_CLRTAG_RGB  = 0b10,
+	ESC_CLRTAG_ID   = 0b11,
 };
-union clrval {
+
+union esc_clrval {
 	uint8_t code;
 	uint8_t id;
-	struct rgb rgb;
-};
-struct clr {
-	enum clrtag tag;
-	union clrval val;
+	struct esc_rgb rgb;
 };
 
-#define CLR_RGB(r, g, b) (struct termclr){.tag = CLRTAG_RGB,  .val.rgb = { r, g, b }}
-#define CLR_ID(c)        (struct termclr){.tag = CLRTAG_ID,   .val.id = c}
-#define CLR_CODE(c)      (struct termclr){.tag = CLRTAG_CODE, .val.code = c + 30}
+struct esc_clr {
+	enum  esc_clrtag tag;
+	union esc_clrval val;
+};
+#define ESC_CLR_RGB(r, g, b) (struct esc_clr){.tag = ESC_CLRTAG_RGB,  .val.rgb  = {r, g, b}}
+#define ESC_CLR_ID(c)        (struct esc_clr){.tag = ESC_CLRTAG_ID,   .val.id   = c        }
+#define ESC_CLR_CODE(c)      (struct esc_clr){.tag = ESC_CLRTAG_CODE, .val.code = c + 30   }
 
-enum clrcode {
-	CLRCODE_BLACK,
-	CLRCODE_RED,
-	CLRCODE_GREEN,
-	CLRCODE_YELLOW,
-	CLRCODE_BLUE,
-	CLRCODE_MAGENTA,
-	CLRCODE_CYAN,
-	CLRCODE_WHITE,
-	CLRCODE_DEF = 9,
+enum esc_clrcode {
+	ESC_CLRCODE_BLACK,
+	ESC_CLRCODE_RED,
+	ESC_CLRCODE_GREEN,
+	ESC_CLRCODE_YELLOW,
+	ESC_CLRCODE_BLUE,
+	ESC_CLRCODE_MAGENTA,
+	ESC_CLRCODE_CYAN,
+	ESC_CLRCODE_WHITE,
+	ESC_CLRCODE_DEF = 9,
 };
 
-struct tagchar { // Must fit in 32 bits
-	_BitInt(21) c     : 21; // utf8 can't go past 2^21, 11 bits remain always unused even in utf32
-	enum clrtag bgtag : 2;
-	enum clrtag fgtag : 2;
-	bool visible      : 1;
+/**
+ * A bitfield representing a unicode codepoint alongside cell metadata
+ * in the unused unicode bits as UTF-8 cannot represent more than 2^21 codepoints.
+ * Fits in 32 bits.
+ */
+struct esc_tagchar {
+	_BitInt(21) c : 21;
+	enum esc_clrtag bgtag : 2;
+	enum esc_clrtag fgtag : 2;
+	bool visible : 1;
 };
 
-// properties
-extern struct termclr def_bg_clr;
-extern struct termclr def_fg_clr;
-
-// cell buffers
-extern struct tagchar tagschars[]; // 32bit bitfields
-extern union clrval   bg_clrs[];
-extern union clrval   fg_clrs[];
-
-size_t cursor;
-char8_t* buf;
-
-struct termsize termsize;
-unsigned termflags;
-
-struct scrbuf* pbuf;
-struct scrbuf* vbuf;
-
-/** Sets variables relative to the internal memory allocations of the library,
- * where scrstr refers to the screen string buffer, that is the buffer that will contain the string
- * which will be written to stdout to represent whatever screen you want to see with srefresh/refresh for stdscr (default) */
-void scrmemargs(size_t scrstr_bufsize, float scrstr_growth_rate);
-
-/** Draws the given screen with the smallest possible sequence based on previous states if available */
-bool refresh(bool clear);
-
-enum escerr idxtocord(size_t i, uint16_t* x, uint16_t* y);
-/** Returns the index in a screen buffer of the size of scr, -1 if x or y is out of bounds.
- * Use scorderr(x, y) to get more details. */
-long cordtoidx(uint16_t x, uint16_t y);
-
-/** Sets UTF32 character c32 in physical scrbuf of scr at (x, y)
- * Returns flags of cordbounderrs given x and y. */
-enum escerr setcp(char32_t c, uint16_t x, uint16_t y);
-
-/** Sets the given bg color at (x, y) */
-enum escerr setbgclr(struct termclr clr, uint16_t x, uint16_t y);
-
-/** Sets the given fg color at (x, y) */
-enum escerr setfgclr(struct termclr clr, uint16_t x, uint16_t y);
-
-/** Sets the given fg and bg colors at (x, y) */
-enum escerr setclrpair(struct termclr bgclr, struct termclr fgclr, uint16_t x, uint16_t y);
-
-enum escerr setvis(bool visible, uint16_t x, uint16_t y);
-
-enum escerr togglevis(uint16_t x, uint16_t y);
 
 
-#define UTF8(s) (char8_t*)s
+// TODO : implement
+struct esc_strbuf_threading {
+	enum {
+		ESC_STRBUF_SINGLE_THREADED,
+		ESC_STRBUF_PARALLEL,
+	} tag;
+	float thread_ratio;
+};
 
-#define MAX_UTF8_CU  4
-#define MAX_CP_WIDTH UINT32_WIDTH
+#define ESC_STRBUF_THREADING_SINGLE() struct esc_strbuf_threading {.tag = ESC_STRBUF_SINGLE_THREADED}
+#define ESC_STRBUF_THREADING_PARALLEL(ratio) struct esc_strbuf_threading {.tag = ESC_STRBUF_SINGLE_THREADED, .thread_ratio = ratio}
+
+struct esc_strbuf_impl {
+	enum {
+		ESC_STRBUF_CIRCULAR,
+		ESC_STRBUF_GROWABLE,
+	} buf_type_tag;
+	union {
+		struct {
+			enum {
+				ESC_STRBUF_CIRCULAR_STACK,
+				ESC_STRBUF_CIRCULAR_HEAP,
+			} alloc_tag;
+			union {
+				struct {
+					size_t size;
+					struct esc_strbuf_threading threading;
+				} heap;
+				struct {
+					char* buf;
+					size_t size;
+				} stack;
+			};
+		} circular;
+		struct {
+			size_t init_size;
+			float growth_rate;
+			struct esc_strbuf_threading threading;
+		} growable;
+	};
+};
+
+
+#define ESC_STRBUF_IMPL_CIRCULAR_STACK(buf_ptr, buf_size) \
+struct esc_strbuf_impl {                                  \
+	.buf_type_tag = ESC_STRBUF_CIRCULAR,                  \
+	.circular = {                                         \
+		.alloc_tag = ESC_STRBUF_CIRCULAR_STACK,           \
+		.stack = { .buf = buf_ptr, .size = buf_size }     \
+	},                                                    \
+}
+#define ESC_STRBUF_IMPL_CIRCULAR_HEAP(buf_size, buf_threading)   \
+struct esc_strbuf_impl {                                         \
+	.buf_type_tag = ESC_STRBUF_CIRCULAR,                         \
+	.circular = {                                                \
+		.alloc_tag = ESC_STRBUF_CIRCULAR_HEAP,                   \
+		.heap = { .size = buf_size, .threading = buf_threading } \
+	},                                                           \
+}
+
+#define ESC_STRBUF_IMPL_GROWABLE(buf_init_size, buf_growth_rate, buf_threading) \
+struct esc_strbuf_impl {                                                        \
+	.buf_type_tag = ESC_STRBUF_GROWABLE,                                        \
+	.growable = {                                                               \
+		.init_size = buf_init_size,                                             \
+		.growth_rate buf_growth_rate,                                           \
+		.threading = buf_threading,                                             \
+	},                                                                          \
+}
+
+// TODO : explain each possible mode
+/**
+ * Set options for the string buffer implementation.
+ * For simplicity and correctness, pass `impl` with the ESC_STRBUF_IMPL_X and ESC_STRBUF_THREADING_X.
+ */
+void esc_strbuf_opt(struct esc_strbuf_impl impl);
+
+ESC_RESULT(void) esc_initscr();
+
+ESC_RESULT(void) esc_refresh(bool clear);
+
+ESC_RESULT(void) esc_idxtocord(size_t i, uint16_t *x, uint16_t *y);
+ESC_RESULT(size_t) esc_cordtoidx(uint16_t x, uint16_t y);
+
+ESC_RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y);
+
+ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y);
+ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y);
+ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y);
+
+ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y);
+
+ESC_RESULT(void) esc_togglevis(uint16_t x, uint16_t y);
+
+#define ESC_UTF8(s) (char8_t*)s
+
+#define ESC_MAX_UTF8_CU  4
+#define ESC_MAX_CP_WIDTH UINT32_WIDTH
 
 /** Describes the role of a codeunit (aka 'cu') in a utf8 string.
  * This enum can be used to process utf8 strings grapheme by grapheme instead of one 'cu' at a time.
  * see `cp_cnt`. */
-enum cu_type {
-	CU_INVALID = -1,
-	CU_CONTINUATION,
-	CU_ASCII,
-	CU_SEQ_START_2,
-	CU_SEQ_START_3,
-	CU_SEQ_START_4,
+enum esc_cu {
+	ESC_CU_CONTINUATION,
+	ESC_CU_ASCII,
+	ESC_CU_SEQ_START_2,
+	ESC_CU_SEQ_START_3,
+	ESC_CU_SEQ_START_4,
 };
-
 /** Return the corresponding `enum cptype` for the given character.
  * Defaults to `CP_INVALID` if none of the conditions are met. */
-enum cu_type get_cu_type(char8_t c);
+ESC_RESULT(enum esc_cu) esc_getcu(char8_t c);
 
 /** Returns the number of graphemes with the given utf8 string `str`,
  * -1 if the string is not valid utf8 : this exclude continuation bytes,
@@ -126,7 +177,7 @@ enum cu_type get_cu_type(char8_t c);
  * NOTE THAT : in this case, str would still be useable with any of escape's functions.
  * If you want to check for the full integrity of `str` as a utf8 string, use `get_invalid_cp`.
  * `get_invalid_cp` could also be handy if `count_graphemes` does return -1. */
-long cu_cnt(const char8_t* str, size_t len);
+long esc_cu_cnt(const char8_t* str, size_t len);
 
 /** Returns the index of the first invalid utf8 codepoint found in str, -1 if there are none. */
 long get_inv_cu(const char8_t* str, size_t len);
