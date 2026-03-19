@@ -6,10 +6,25 @@
  * escres_int32_t instead of ESC_RESULT(int32_t) or
  * escres_struct_foo instead of ESC_RESULT(struct foo).
  */
-#define ESC_RESULT(T) struct _ESC_CAT(escres_,ESC_TYPEID(T)) { \
-	enum escerror err;                                         \
-	_ESC_IF_NOT_VOID(T)(T val;)()                               \
+#define ESC_RESULT(T) struct ESC_RESULT_TYPENAME(T) { \
+	const enum escerror err;                          \
+	_ESC_IF_NOT_VOID(T)(const T val;)()               \
 }
+#define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T) { \
+	const enum escerror err;                                  \
+	T* val;                                                   \
+}
+
+#define ESC_RES_VAL(T, v) (struct ESC_RESULT_TYPENAME(T)) {.val = v, .err = 0}
+#define ESC_RES_ERR(T, e) (struct ESC_RESULT_TYPENAME(T)) {.err = e}
+#define ESC_RES_NOERR(T)  (struct ESC_RESULT_TYPENAME(T)) {.err = 0}
+
+#define ESC_RESPTR_VAL(T, v) (struct ESC_RESULT_TYPENAME_PTR(T)) {.val = v, .err = 0}
+#define ESC_RESPTR_ERR(T, e) (struct ESC_RESULT_TYPENAME_PTR(T)) {.err = e}
+#define ESC_RESPTR_NOERR(T)  (struct ESC_RESULT_TYPENAME_PTR(T)) {.err = 0}
+
+#define ESC_TRY(T, res)     if (res.err) return ESC_RES_ERR(T, res.err)
+#define ESC_TRY_PTR(T, res) if (res.err) return ESC_RESPTR_ERR(T, res.err)
 
 #if __STDC_VERSION__ >= 202311L
 #define _ESC_NODISCARD(reason) [[nodiscard(reason)]]
@@ -17,19 +32,20 @@
 #define _ESC_NODISCARD(reason)
 #endif
 
-#define ESC_OK(res) !res.err
-enum escerror {
-  // global
-  ESC_ERR_OUT_OF_MEMORY = 1,
-  // io
-  // rndr
-  ESC_ERR_INVALID_UTF8_CU,
-  ESC_ERR_X_OUT_OF_BOUNDS,
-  ESC_ERR_Y_OUT_OF_BOUNDS,
-  ESC_ERR_XY_OUT_OF_BOUNDS,
-  // 2d
-  // img
-  // 3d
+#define ESC_OK(res) (!res.err)
+enum escerror : unsigned {
+// global
+	ESC_ERR_OUT_OF_MEMORY = 1,
+	ESC_ERR_CANNOT_FREE_MEMORY,
+// io
+// rndr
+	ESC_ERR_INVALID_UTF8_CU,
+	ESC_ERR_X_OUT_OF_BOUNDS,
+	ESC_ERR_Y_OUT_OF_BOUNDS,
+	ESC_ERR_XY_OUT_OF_BOUNDS,
+// 2d
+// img
+// 3d
 };
 
 
@@ -62,6 +78,10 @@ enum escerror {
  * ESC_TYPEID(enum x)     -> enum_x
  */
 // types up to 4 words such as unsigned long long int
+#define ESC_RESULT_TYPENAME(T) _ESC_CAT(escres_,ESC_TYPEID(T))
+#define ESC_RESULT_TYPENAME_PTR(T) _ESC_CAT(escres_,ESC_TYPEID_PTR(T))
+
+#define ESC_TYPEID_PTR(name) _ESC_CAT(ESC_TYPEID(name),_ptr)
 #define ESC_TYPEID(name) ___ESC_TYPEID_(___ESC_TYPEID_(___ESC_TYPEID_(___ESC_TYPEID_(name)))) 
 #define ___ESC_TYPEID_(name_) ___ESC_DETAIL_TYPEID_SELECT(___ESC_DETAIL_TYPEID_ANALYZE(name_), name_, ___ESC_DETAIL_TYPEID_ELABORATED, ___ESC_DETAIL_TYPEID_NOT_ELABORATED, x)
 

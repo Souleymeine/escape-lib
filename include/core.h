@@ -97,14 +97,6 @@ enum scrflags {
 	SCREEN_USE_VIRTUAL    = 0x10,
 };
 
-enum escerr {
-	ESC_OK = 0,
-	ESC_ERR_COORD_X,
-	ESC_ERR_COORD_Y,
-	ESC_ERR_UTF8,
-	ESC_ERR_CP,
-};
-
 enum stdstream {
 	STDOUT = 0,
 	STDIN  = 1,
