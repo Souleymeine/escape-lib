@@ -30,7 +30,8 @@ const base_flags: []const []const u8 = &.{
     "-std=c23",
     "-Wall",
     "-Wextra",
-    "-pedantic",
+    "-Wvla",
+    "-pedantic-errors",
     "-ffreestanding",
 };
 const release_flags: []const []const u8 = &.{
