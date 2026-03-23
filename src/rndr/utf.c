@@ -20,8 +20,8 @@ ESC_RESULT(enum esc_cu) esc_getcu(char8_t c)
 	if (stdc_bit_width(c) < 8) {
 		return ESC_RES_VAL(enum esc_cu, ESC_CU_ASCII);
 	} else {
-		const uint8_t leading_ones = stdc_leading_ones(c);
-		if (stdc_first_leading_zero(c) == leading_ones + 1u) {
+		const uint8_t leading_ones = stdc_leading_ones_uc(c);
+		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
 			if (leading_ones == 1) {
 				return ESC_RES_VAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			} else if (leading_ones <= 4) {
@@ -33,7 +33,7 @@ ESC_RESULT(enum esc_cu) esc_getcu(char8_t c)
 	return ESC_RES_ERR(enum esc_cu, ESC_ERR_INVALID_UTF8_CU);
 }
 
-ESC_RESULT(size_t) get_invcu(const char8_t* str, size_t len)
+ESC_RESULT(size_t) esc_getinvcu(const char8_t* str, size_t len)
 {
 	for (size_t i = 0; i < len; ++i) {
 		if (esc_getcu(str[i]).err == ESC_ERR_INVALID_UTF8_CU) {
