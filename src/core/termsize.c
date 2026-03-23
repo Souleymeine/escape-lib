@@ -8,7 +8,7 @@
 
 #include "../../include/core.h"
 
-struct esc_termsize esc_get_termsize()
+struct esc_termsize esc_getsize()
 {
 	// TODO : get pixel size on linux/BSD tty
 #if __unix__

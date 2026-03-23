@@ -5,47 +5,40 @@
 #include <unistd.h>
 #endif
 
-#include "../../include/_escdef.h"
 #include "../../include/core.h"
 
 
 #if __unix__
-static struct termios s_termattr;
+static struct termios g_termattr;
 #elif _WIN32
-static HANDLE stdin_hndl;
-static HANDLE stdout_hndl;
-static HANDLE stderr_hndl;
-static DWORD s_stdin_mode;
-static DWORD s_og_stdin_mode;
-static DWORD s_og_stdout_mode;
-static UINT s_og_output_cp;
+static HANDLE g_stdin_h;
+static HANDLE g_stdout_h;
+static HANDLE g_stderr_h;
+static DWORD  g_stdin_mode;
+static DWORD  g_og_stdin_mode;
+static DWORD  g_og_stdout_mode;
+static UINT   g_og_output_cp;
 #endif
 
-static termstatefl s_flags    = 0;
-static bool s_stdscr_use_vscr = false;
-static bool s_enabled_altbuf  = false;
+static uint16_t g_flags = 0;
+static uint16_t g_og_flags = 0;
 
-
-void usevscr() { s_stdscr_use_vscr = true; }
-
-void init_term()
+void esc_init()
 {
 #if __unix__
-	tcgetattr(STDIN_FILENO, &s_termattr);
+	tcgetattr(STDIN_FILENO, &g_termattr);
 #elif _WIN32
-	stdin_hndl  = GetStdHandle(STD_INPUT_HANDLE);
-	stdout_hndl = GetStdHandle(STD_OUTPUT_HANDLE);
-	stderr_hndl = GetStdHandle(STD_ERROR_HANDLE);
-	GetConsoleMode(stdin_hndl, &s_og_stdin_mode);
-	GetConsoleMode(stdout_hndl, &s_og_stdout_mode);
+	g_stdin_h  = GetStdHandle(STD_INPUT_HANDLE);
+	g_stdout_h = GetStdHandle(STD_OUTPUT_HANDLE);
+	g_stderr_h = GetStdHandle(STD_ERROR_HANDLE);
+	GetConsoleMode(g_stdin_h,  &g_og_stdin_mode);
+	GetConsoleMode(g_stdout_h, &g_og_stdout_mode);
 
-	SetConsoleMode(stdout_hndl, s_og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	SetConsoleMode(g_stdout_h, g_og_stdout_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	g_stdin_mode = g_og_stdin_mode | ENABLE_VIRTUAL_TERMINAL_INPUT;
+	SetConsoleMode(g_stdin_h, g_stdin_mode);
 
-	const DWORD new_in_mode = s_og_stdin_mode | ENABLE_VIRTUAL_TERMINAL_INPUT;
-	current_stdin_mode      = new_in_mode;
-	SetConsoleMode(stdin_hndl, new_in_mode);
-
-	s_og_output_cp = GetConsoleOutputCP();
+	g_og_output_cp = GetConsoleOutputCP();
 #endif
 
 	// TODO : gather termcaps but without termcap/terminfo
@@ -53,88 +46,77 @@ void init_term()
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
-int set_termflags(termstatefl flags)
+ESC_RESULT(void) esc_settermflags(uint16_t flags)
 {
-	if (flags == s_flags) {
-		return -1;
+	if (flags == g_flags) {
+		return ESC_RES_ERR(void, ESC_ERR_TERMFLAGS_ALREADY_SET);
 	}
 
 #if __unix__
-	s_termattr.c_lflag = (flags & TERM_NO_ECHO) ? s_termattr.c_lflag & (~ECHO) : s_termattr.c_lflag | ECHO;
-	tcsetattr(STDIN_FILENO, 0, &s_termattr);
+	g_termattr.c_lflag = (flags & ESC_TERM_NO_ECHO)
+		? g_termattr.c_lflag & (~ECHO)
+		: g_termattr.c_lflag | ECHO;
+	tcsetattr(STDIN_FILENO, 0, &g_termattr);
 #elif _WIN32
-
 	/* "This mode [`ENABLE_ECHO_INPUT`] can be used only if the ENABLE_LINE_INPUT mode is also enabled."
 	 * - https://learn.microsoft.com/en-us/windows/console/setconsolemode
 	 * TODO : some "side effects" are caused by the combination of those two flags, (presumably
 	 * something that has to do with line buffering) and should be studied with more care. */
-	SetConsoleMode(stdin_hndl,
-	               current_stdin_mode & (flags & NO_ECHO) ? (~ENABLE_ECHO_INPUT) : (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
+	SetConsoleMode(g_stdin_h, (g_stdin_mode & (flags & NO_ECHO))
+		? (~ENABLE_ECHO_INPUT)
+		: (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
 
-	if (flags & TERM_ALTBUF) {
-		if (!s_enabled_altbuf) {
-			stdscr = newscr(DEF_SCR_BGCLR, DEF_SCR_FGCLR, s_stdscr_use_vscr);
-		}
-		s_enabled_altbuf = true;
-	}
+	char8_t seq[14];
+	const size_t len = esc_seqcat(seq, (struct esc_seqel[]) {
+		ESC_SEQ_STRL(CSI), ESC_SEQ_STRL("?1049"), ESC_SEQ_CHR(flags & ESC_TERM_ALTBUF ?      'h' : 'l'),
+		ESC_SEQ_STRL(CSI), ESC_SEQ_STRL("?25"),   ESC_SEQ_CHR(flags & ESC_TERM_HIDE_CURSOR ? 'l' : 'h')
+	}, 6);
 
-	c8 seq[14];
-	const usize seqlen = seqcat(seq, (struct seqel[]){
-		SEQ_STRL(CSI), SEQ_STRL("?1049"), SEQ_CHR(flags & TERM_ALTBUF ? 'h' : 'l'),
-	    SEQ_STRL(CSI), SEQ_STRL("?25"), SEQ_CHR(flags & TERM_HIDE_CURSOR ? 'l' : 'h')},
-		6
-	);
-	termprint(STDOUT, seq, seqlen);
+	ESC_TRY(void, esc_termwrite(ESC_STDOUT, seq, len));
 
-	s_flags = flags;
-	return 0;
+	g_flags = flags;
+
+	return ESC_RES_NOERR(void);
 }
 
-inline void init_flags(termstatefl flags)
-{
-	init_term();
-	set_termflags(flags);
-}
-
-const termstatefl* get_termflags() { return &s_flags; }
+uint16_t esc_gettermflags() { return g_flags; }
 
 #if _WIN32
-const HANDLE* get_g_stdin_hndl() { return &stdin_hndl; }
-
-const HANDLE* get_g_stdout_hndl() { return &stdout_hndl; }
+HANDLE esc_getstdout_h()  { return g_stdout_h; }
+HANDLE esc_getstdin_h()   { return g_stdin_h; }
+HANDLE esc_getstderr_h()  { return g_stderr_h; }
 #endif
 
-bool termprint(enum stdstream stream, const c8* buf, usize len)
+ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_t len)
 {
-	isize bytes_written;
 #if __unix__
-	bytes_written = write(stream, buf, len); // stream directly maps to POSIX fd
-	if (bytes_written == -1 || bytes_written != (isize)len) {
-		return true;
+	const ssize_t bytes_written = write(stream, buf, len); // stream directly maps to POSIX fd
+	if (bytes_written == -1) {
+		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_FAILED);
+	} else if (bytes_written != (ssize_t)len) {
+		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #elif _WIN32
-	uint hndl;
+	UINT h;
 	switch(stream) {
-	case STDOUT: hndl = stdout_hndl; break;
-	case STDIN:  hndl = stdin_hndl;  break;
-	case STDERR: hndl = stderr_hndl; break;
+	case STDOUT: h = g_stdout_h; break;
+	case STDIN:  h = g_stdin_h;  break;
+	case STDERR: h = g_stderr_h; break;
 	}
-	if (WriteConsole(hndl, buf, &bytes_written, nullptr) || bytes_written != (isize)len) {
-		return true;
+	DWORD bytes_writtern;
+	if (!WriteConsole(h, buf, &bytes_written, nullptr)) {
+		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_FAILED);
+	} else if (bytes_written != len) {
+		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #endif
-	return false;
+	return  ESC_RES_NOERR(void);
 }
 
-void cleanup_term()
+void esc_cleanup()
 {
-	// freescr(stdscr);
-	// Deallocating when ending the program is unnecessary, the OS will do it faster afterwards
-	// Fight me.
-	// TODO : get termfalgs when calling init_term instead of setting 0
-	set_termflags(0);
-
+	(void)esc_settermflags(g_og_flags);
 #if _WIN32
 	SetConsoleOutputCP(s_og_output_cp);
 	SetConsoleMode(stdout_hndl, s_og_stdout_mode);
