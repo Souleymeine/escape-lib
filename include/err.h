@@ -86,9 +86,10 @@ enum escerror : unsigned {
 // io
 // rndr
 	ESC_ERR_INVALID_UTF8_CU,
-	ESC_ERR_X_OUT_OF_BOUNDS,
-	ESC_ERR_Y_OUT_OF_BOUNDS,
-	ESC_ERR_XY_OUT_OF_BOUNDS,
+	ESC_ERR_CELL_X_OOB,
+	ESC_ERR_CELL_Y_OOB,
+	ESC_ERR_CELL_XY_OOB,
+	ESC_ERR_CELL_INDEX_OOB,
 // 2d
 // img
 // 3d
@@ -111,12 +112,13 @@ _ESC_RESULT_DECL(char32_t);
 #define ESC_RESULT(T)     struct ESC_RESULT_TYPENAME(T)
 #define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T)
 
-#define ESC_RES_VAL(T, v) (ESC_RESULT(T)) {.val = v, .err = 0}
-#define ESC_RES_ERR(T, e) (ESC_RESULT(T)) {.err = e}
+// Variadics to remove the necessity of parenthesis when using inline structs
+#define ESC_RES_VAL(T, ...) (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
+#define ESC_RES_ERR(T, ...) (ESC_RESULT(T)) {.err = __VA_ARGS__}
 #define ESC_RES_NOERR(T)  (ESC_RESULT(T)) {.err = 0}
 
-#define ESC_RESPTR_VAL(T, v) (ESC_RESULT_PTR(T)) {.val = v, .err = 0}
-#define ESC_RESPTR_ERR(T, e) (ESC_RESULT_PTR(T)) {.err = e}
+#define ESC_RESPTR_VAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
+#define ESC_RESPTR_ERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
 #define ESC_RESPTR_NOERR(T)  (ESC_RESULT_PTR(T)) {.err = 0}
 
 #if __STDC_VERSION__ >= 202311L

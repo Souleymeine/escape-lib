@@ -1,4 +1,6 @@
-#include <stdlib.h>
+#include <assert.h>
+#include <math.h>
+#include <string.h>
 #if __unix__
 #include <sys/mman.h>
 #include <unistd.h>
@@ -6,377 +8,438 @@
 #include <memoryapi.h>
 #endif
 
-#include "../../include/_escdef.h"
 #include "../../include/core.h"
 #include "../../include/rndr.h"
 
-// Default values
-static usize s_strbuf_init_size   = 4096;
-static float s_strbuf_growth_rate = 1.5f;
+/* --- Global state --- */
 
-void scrmemargs(usize new_init_strbuf_size, float new_strbuf_growth_rate)
+typedef struct {
+	_BitInt(21) c: 21;
+	enum esc_clrtag bgclr_tag: 2;
+	enum esc_clrtag fgclr_tag: 2;
+	bool visible: 1;
+} char_and_tag; // I like thinking of bitfields as bitpacked ints, let me stay in my own delusion.
+
+struct grid {
+	struct esc_termsize size;
+	struct esc_clr def_bgclr;
+	struct esc_clr def_fgclr;
+
+	char_and_tag* chars_tags;
+	union esc_clrval* bg_clrs;
+	union esc_clrval* fg_clrs;
+};
+
+struct strbuf {
+	char* bytes;
+	size_t cursor;
+	size_t capacity;
+	enum esc_strbuf_type type;
+	float growth;
+};
+
+struct rndr_arena {
+	void* bytes;
+	size_t heapsize;
+};
+
+static struct grid g_physical_grid;
+static struct grid g_virtual_grid;
+static struct strbuf g_string_buffer;
+static struct rndr_arena g_rndr_arena;
+// indicates if the screen has been refreshed at least once
+static bool g_refreshed;
+static bool g_use_virtual_grid;
+
+/** --- Windows/POSIX basic heap de/allocator --- */
+
+[[nodiscard("What are you doing?")]]
+static ESC_RESULT_PTR(void) heapalloc(size_t pagesize)
 {
-	s_strbuf_init_size   = new_init_strbuf_size;
-	s_strbuf_growth_rate = new_strbuf_growth_rate;
-}
-
-
-/** --- Cross plateform heap de/allocator --- */
-
-static inline void* heapalloc(usize pagesize)
-{
+	// TODO : handle all relevant values of errno
 #if __unix__
 	// MAP_ANONYMOUS, when used with -1 as fd, has the side effect of initializing the page with 0s, which is desired
 	void* page = mmap(nullptr, pagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (page == MAP_FAILED) {
-		return nullptr;
-	}
 #elif _WIN32
 	LPVOID page = VirtualAlloc(nullptr, pagesize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	if (!page) {
-		return nullptr;
-	}
 #endif
-
-	return page;
+		return ESC_RESPTR_ERR(void, ESC_ERR_OUT_OF_MEMORY);
+	}
+	return ESC_RESPTR_VAL(void, page);
 }
 
-static inline bool heapfree(void* ptr, usize pagesize)
+static ESC_RESULT(void) heapfree(void* ptr, size_t len)
 {
 #if __unix__
-	if (munmap(ptr, pagesize) == -1) {
-		return true;
-	}
+	if (munmap(ptr, len) == -1) {
 #elif _WIN32
-	if (VirtualFree(ptr, pagesize, MEM_RELEASE) == 0) {
-		return true;
-	}
+	if (VirtualFree(ptr, len, MEM_RELEASE) == 0) {
 #endif
-
-	return false;
+		return ESC_RES_ERR(void, ESC_ERR_CANNOT_FREE_MEMORY);
+	}
+	return ESC_RES_NOERR(void);
 }
 
-/** Return the adress offset to the right to respect the given alignment */
-static inline usize alignptr(usize addr, usize align)
-{
-	// https://en.wikipedia.org/wiki/Data_structure_alignment
-	return (addr + (align - 1)) & -align;
-}
-#define OFFSET_PTR_BY(baseaddr, offset, ptrbasetype) ((ptrbasetype*)alignptr((usize)(baseaddr) + offset, alignof(ptrbasetype)))
+/* Return the adress offset to the right to respect the given alignment
+ * https://en.wikipedia.org/wiki/Data_structure_alignment */
+#define OFFSET_PTR_BY(base_T, ptr, ofst) (base_T*)(((uintptr_t)(ptr) + (ofst) + alignof(base_T) - 1) & -alignof(base_T))
 
-#define WORST_SIZEOF(type) (sizeof(type) + alignof(type))
-
-
-/** Initializes the fields of the given scrbuf struct and the page segment it represents */
-static inline void initscrbuf(struct scrbuf* scrbuf, struct termclr bg_clr, struct termclr fg_clr, usize char_and_tags_size,
-                              usize clrs_size)
-{
-	scrbuf->def_bg_clr = bg_clr;
-	scrbuf->def_fg_clr = fg_clr;
+/** Initializes the fields of the given grid and offsets arena_cursor */
+static void initgrid(struct grid* g, uintptr_t* arena_cursor,
+	struct esc_termsize size,
+	struct esc_clr bgclr,
+	struct esc_clr fgclr,
+	size_t chars_and_tags_size, size_t clrvals_size
+) {
+	g->size = size;
+	g->def_bgclr = bgclr;
+	g->def_fgclr = fgclr;
 	// We assign each buffer pointer to the right location, based on the given address and offset in the arena
-	scrbuf->tagschars = OFFSET_PTR_BY(scrbuf, sizeof(struct scrbuf), struct tagchar);
-	scrbuf->bg_clrs   = OFFSET_PTR_BY(scrbuf->tagschars, char_and_tags_size, union clrval);
-	scrbuf->fg_clrs   = OFFSET_PTR_BY(scrbuf->bg_clrs, clrs_size, union clrval);
+	g->chars_tags = OFFSET_PTR_BY(char_and_tag,     *arena_cursor, sizeof(struct grid));
+	g->bg_clrs    = OFFSET_PTR_BY(union esc_clrval, g->chars_tags, chars_and_tags_size);
+	g->fg_clrs    = OFFSET_PTR_BY(union esc_clrval, g->bg_clrs,    clrvals_size);
+
+	*arena_cursor += (uintptr_t)g->fg_clrs - (uintptr_t)arena_cursor; // last - first
 }
 
-static inline void initstrbuf(struct _strbuf* strbuf, usize pagesize)
+static ESC_RESULT(void) initstrbuf(const struct esc_strbuf_impl* strbuf_impl, uintptr_t* arena_cursor)
 {
-	strbuf->pagesize = pagesize;
-	strbuf->buf      = OFFSET_PTR_BY(strbuf, sizeof(struct _strbuf), c8);
-	strbuf->cursor   = 0;
-	strbuf->bufsize  = s_strbuf_init_size;
+	g_string_buffer.type = strbuf_impl->buftype_tag;
+
+	switch (strbuf_impl->buftype_tag) {
+	case ESC_STRBUF_CIRCULAR:
+		switch (strbuf_impl->circular.alloc_tag) {
+		case ESC_STRBUF_CIRCULAR_HEAP:
+			g_string_buffer = (struct strbuf) {
+				.bytes    = (char*)arena_cursor, // No need to align anything, we love bytes :fire: (technically char isn't a byte but stfu)
+				.cursor   = 0,
+				.capacity = strbuf_impl->circular.heapsize,
+				.growth   = NAN,
+			};
+			arena_cursor += strbuf_impl->circular.heapsize;
+			break;
+		case ESC_STRBUF_CIRCULAR_STACK:
+			g_string_buffer = (struct strbuf) {
+				.bytes    = strbuf_impl->circular.stack.buf,
+				.cursor   = 0,
+				.capacity = strbuf_impl->circular.stack.size,
+				.growth   = NAN,
+			};
+			break;
+		}
+		break;
+	case ESC_STRBUF_GROWABLE:
+		const ESC_RESULT_PTR(void) strbuf_page = heapalloc(strbuf_impl->growable.init_size);
+		ESC_TRY(void, strbuf_page);
+
+		g_string_buffer = (struct strbuf) {
+			.bytes    = strbuf_page.val,
+			.cursor   = 0,
+			.capacity = strbuf_impl->growable.init_size,
+			.growth   = strbuf_impl->growable.growth_rate,
+		};
+		break;
+	}
+
+	return ESC_RES_NOERR(void);
 }
 
-screen* newscr(struct termclr bgclr, struct termclr fgclr, termstatefl scrflags)
+#define PADDING_BETWEEN(prev_bytes, next_T) (prev_bytes % sizeof(next_T))
+
+ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr)
 {
-	const struct termsize size = get_termsize();
-	const usize cell_cnt       = size.cols * size.rows;
+	g_use_virtual_grid = virtual_grid;
 
-	const usize tagchars_size = cell_cnt * sizeof(c32);
-	const usize clrs_size     = cell_cnt * sizeof(union clrval);
-	// size of struct scrbuf + the size of its buffers including worst case padding
-	const usize worst_scrbuf_memsize
-		= sizeof(struct scrbuf) + (2 * (clrs_size + alignof(union clrval)) + (tagchars_size + alignof(c32)));
+	size_t current_arena_heapsize = 0;
 
-	const usize arena_pagesize  = WORST_SIZEOF(struct _scr_arena) + (1 + (scrflags & SCREEN_USE_VIRTUAL)) * worst_scrbuf_memsize;
-	const usize strbuf_pagesize = WORST_SIZEOF(struct _strbuf) + s_strbuf_init_size;
+	/* --- Calculate sizes --- */
 
-	struct _scr_arena* arena = heapalloc(arena_pagesize);
-	if (!arena) {
-		return nullptr;
-	}
-	struct _strbuf* strbuf = heapalloc(strbuf_pagesize);
-	if (!strbuf) {
-		heapfree(arena, arena_pagesize);
-		return nullptr;
-	}
+	const struct esc_termsize size = esc_get_termsize();
+	const size_t cell_count        = size.cols * size.rows;
 
-	arena->termflags = (scrflags & SCREEN_HOLD_TERMFLAGS) ? (scrflags & ~(SCREEN_HOLD_TERMFLAGS | SCREEN_USE_VIRTUAL)) : -1;
-	arena->pagesize  = arena_pagesize;
-	arena->termsize  = size;
-	// arena is 0 initialized -> arena->refreshed = false;
-
-	arena->strbuf = strbuf;
-	initstrbuf(arena->strbuf, strbuf_pagesize);
-
-	arena->pbuf = OFFSET_PTR_BY(arena, sizeof(struct _scr_arena), struct scrbuf);
-	initscrbuf(arena->pbuf, bgclr, fgclr, tagchars_size, clrs_size);
-	if (scrflags & SCREEN_USE_VIRTUAL) {
-		// arena is 0 initialized, so arena->_vbuf is nullptr by default
-		arena->vbuf = OFFSET_PTR_BY(arena->pbuf, worst_scrbuf_memsize, struct scrbuf);
-		initscrbuf(arena->vbuf, bgclr, fgclr, tagchars_size, clrs_size);
+	const size_t cts_heapsize     = cell_count * (sizeof(char_and_tag));
+	const size_t clrvals_heapsize = cell_count * (sizeof(union esc_clrval));
+	// char_and_tags + padding + clrvals
+	const size_t grid_bytesize = cts_heapsize + PADDING_BETWEEN(cts_heapsize, union esc_clrval) + clrvals_heapsize * 2;
+	
+	current_arena_heapsize += grid_bytesize * (1 + virtual_grid);
+	
+	// We add the strbuf in the arena if it's circular and heap allocated as it won't jump around by growing
+	if (strbuf_impl->buftype_tag        == ESC_STRBUF_CIRCULAR &&
+		strbuf_impl->circular.alloc_tag == ESC_STRBUF_CIRCULAR_HEAP
+	) {
+		current_arena_heapsize += strbuf_impl->circular.heapsize;
 	}
 
-	return arena;
+	/* --- Allocate and set --- */
+
+	const size_t arena_heapsize = current_arena_heapsize;
+	const ESC_RESULT_PTR(void) page = heapalloc(arena_heapsize);
+	ESC_TRY(void, page);
+	g_rndr_arena = (struct rndr_arena) {
+		.bytes    = page.val,
+		.heapsize = arena_heapsize,
+	};
+	
+	uintptr_t arena_cursor = (uintptr_t)g_rndr_arena.bytes;
+
+	initgrid(&g_physical_grid, &arena_cursor, size, bgclr, fgclr, cts_heapsize, clrvals_heapsize);
+	assert(arena_cursor == (uintptr_t)g_rndr_arena.bytes + grid_bytesize);
+
+	if (virtual_grid) {
+		initgrid(&g_virtual_grid, &arena_cursor, size, bgclr, fgclr, cts_heapsize, clrvals_heapsize);
+		assert(arena_cursor == (uintptr_t)g_rndr_arena.bytes + 2 * grid_bytesize + PADDING_BETWEEN(grid_bytesize, union esc_clrval));
+	}
+
+	ESC_TRY(void, initstrbuf(strbuf_impl, &arena_cursor));
+	assert(arena_cursor == (uintptr_t)g_rndr_arena.bytes + arena_heapsize);
+
+	return ESC_RES_NOERR(void);
 }
 
-bool freescr(screen* scr)
+ESC_RESULT(void) esc_deinitscr()
 {
-	// Don't mess up the order! strbuf THEN scr
-	if (heapfree(scr->strbuf, scr->strbuf->pagesize) || heapfree(scr, scr->pagesize)) {
-		return true;
+	ESC_TRY(void, heapfree(g_rndr_arena.bytes, g_rndr_arena.heapsize));
+	if (g_string_buffer.type == ESC_STRBUF_GROWABLE) {
+		ESC_TRY(void, heapfree(g_string_buffer.bytes, g_string_buffer.capacity));
 	}
-	scr = nullptr;
-	return false;
+	return ESC_RES_NOERR(void);
 }
 
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * ------------------------ */
-struct _strbuf* strbuf_grow(const struct _strbuf* strbuf)
+static ESC_RESULT(void) strbuf_grow()
 {
-	const usize newbufsize   = strbuf->bufsize * s_strbuf_growth_rate;
-	const usize new_pagesize = WORST_SIZEOF(struct _strbuf) + newbufsize;
+	const size_t new_capacity = g_string_buffer.capacity * g_string_buffer.growth;
+	const ESC_RESULT_PTR(void) new_page = heapalloc(new_capacity);
+	ESC_TRY(void, new_page);
 
-	struct _strbuf* newstrbuf = heapalloc(new_pagesize);
-	if (!newstrbuf) {
-		return nullptr;
-	}
+	memcpy(new_page.val, g_string_buffer.bytes, g_string_buffer.cursor);
 
-	newstrbuf->pagesize = new_pagesize;
-	newstrbuf->bufsize  = newbufsize;
-	newstrbuf->cursor   = strbuf->cursor;
-	newstrbuf->buf      = OFFSET_PTR_BY(newstrbuf, sizeof(struct _strbuf), c8);
-	// -- CRITICAL : move memory (MUST be faster than or equal to memmove) -- //
-	for (usize i = 0; i < strbuf->bufsize; ++i) {
-		newstrbuf->buf[i] = strbuf->buf[i];
-	}
+	ESC_TRY(void, heapfree(g_string_buffer.bytes, g_string_buffer.capacity));
 
-	if (heapfree((struct _strbuf*)strbuf, strbuf->bufsize)) {
-		// TODO : Return an error via enum so we know exactly what went wrong instead of just "true"
-		heapfree(newstrbuf, new_pagesize); // I fear there is nothing we can do...
-		return nullptr;
-	}
+	g_string_buffer.bytes    = new_page.val;
+	g_string_buffer.capacity = new_capacity;
 
-	strbuf = nullptr;
-	return newstrbuf;
+	return ESC_RES_NOERR(void);
 }
 
-static inline void strbufadd(struct _strbuf** const strbuf, const c8* str, usize strlen)
+static ESC_RESULT(void) strbuf_flush()
 {
-	if ((*strbuf)->cursor + strlen > (*strbuf)->bufsize) {
-		*strbuf = strbuf_grow(*strbuf);
-#ifdef DEBUG
-		if (!(*strbuf)) {
-			ESC_LOG_ERR(u8"Could not reallocate string buffer, exiting before segfault...\n");
-			_Exit(1);
+	if (g_string_buffer.cursor > 0) {
+		ESC_TRY(void, esc_termprint(ESC_STDOUT, g_string_buffer.bytes + g_string_buffer.cursor, g_string_buffer.capacity));
+		g_string_buffer.cursor = 0;
+	}
+	return ESC_RES_NOERR(void);
+}
+
+// Copies str of size len asserting it can fit at the string buffer's current cursor
+static void strbuf_copy(const char8_t* str, size_t len)
+{
+	assert(g_string_buffer.cursor <= g_string_buffer.capacity);
+	memcpy(g_string_buffer.bytes + g_string_buffer.cursor, str, len);
+	g_string_buffer.cursor += len;
+}
+
+// Adds str of size len to the string buffer while growing it or flushing if necessary
+static ESC_RESULT(void) strbuf_add(const char8_t* str, size_t len)
+{
+	if (g_string_buffer.cursor + len > g_string_buffer.capacity) {
+		switch (g_string_buffer.type) {
+		case ESC_STRBUF_CIRCULAR:
+			const size_t capacity_left = g_string_buffer.capacity - g_string_buffer.cursor;
+			strbuf_copy(str, capacity_left);
+			ESC_TRY(void, strbuf_flush());
+
+			const size_t bytes_left = len - capacity_left;
+			ESC_TRY(void, strbuf_add(str + capacity_left, bytes_left));
+			break;
+		case ESC_STRBUF_GROWABLE:
+			ESC_TRY(void, strbuf_grow());
 		}
-#endif
 	}
-	for (usize i = 0; i < strlen; ++i) {
-		(*strbuf)->buf[(*strbuf)->cursor + i] = str[i];
-	}
-	(*strbuf)->cursor += strlen;
+
+	strbuf_copy(str, len);
+	return ESC_RES_NOERR(void);
 }
 
-static void addclrtostrbuf(screen* const scr, usize cell_idx, bool isbg)
+static ESC_RESULT(void) strbuf_addclr(struct grid* g, size_t cell_idx, bool isbg)
 {
-	const enum clrtag tag = isbg ? scr->pbuf->tagschars[cell_idx].bgtag : scr->pbuf->tagschars[cell_idx].fgtag;
-	switch (tag) {
-	case CLRTAG_CODE:
-		c8 clr_code_seq[U8_WORST_PARAMSEQ_LEN(1)];
-		const uchar clr_code        = isbg ? scr->pbuf->bg_clrs[cell_idx].code + 10 : scr->pbuf->fg_clrs[cell_idx].code;
-		const usize clr_code_seqlen = u8paramseq(clr_code_seq, (u8[]){clr_code}, 1, 'm');
-		strbufadd(&scr->strbuf, clr_code_seq, clr_code_seqlen);
+	char8_t seq[4 + ESC_U8_WORST_PARAMSEQ_LEN(3)]; // biggest possible bufsize of all the 3 color formats (rgb)
+	size_t len;
+	switch (isbg ? g->chars_tags[cell_idx].bgclr_tag : g->chars_tags[cell_idx].fgclr_tag) {
+	case ESC_CLRTAG_CODE:
+		const uint8_t code = isbg ? g->bg_clrs[cell_idx].code + 10 : g->fg_clrs[cell_idx].code;
+		len = u8paramseq(seq, (uint8_t[]){code}, 1, 'm');
 		break;
-	case CLRTAG_RGB:
-		c8 clr_rgb_seq[4 + U8_WORST_PARAMSEQ_LEN(3)];
-		const struct rgb clr_rgb   = isbg ? scr->pbuf->bg_clrs[cell_idx].rgb : scr->pbuf->fg_clrs[cell_idx].rgb;
-		const usize clr_rgb_seqlen = u8paramseq(clr_rgb_seq, (u8[]){isbg ? 48 : 38, 2, clr_rgb.r, clr_rgb.g, clr_rgb.b}, 5, 'm');
-		strbufadd(&scr->strbuf, clr_rgb_seq, clr_rgb_seqlen);
+	case ESC_CLRTAG_RGB:
+		const struct esc_rgb rgb = isbg ? g->bg_clrs[cell_idx].rgb : g->fg_clrs[cell_idx].rgb;
+		len = u8paramseq(seq, (uint8_t[]){ isbg ? 48 : 38, 2, rgb.r, rgb.g, rgb.b }, 5, 'm');
 		break;
-	case CLRTAG_ID:
-		c8 clr_id_seq[4 + U8_WORST_PARAMSEQ_LEN(1)];
-		const u8 clr_id           = isbg ? scr->pbuf->bg_clrs[cell_idx].id : scr->pbuf->fg_clrs[cell_idx].id;
-		const usize clr_id_seqlen = u8paramseq(clr_id_seq, (u8[]){isbg ? 48 : 38, 5, clr_id}, 3, 'm');
-		strbufadd(&scr->strbuf, clr_id_seq, clr_id_seqlen);
+	case ESC_CLRTAG_ID:
+		const uint8_t id = isbg ? g->bg_clrs[cell_idx].id : g->fg_clrs[cell_idx].id;
+		len = u8paramseq(seq, (uint8_t[]){ isbg ? 48 : 38, 5, id }, 3, 'm');
 		break;
 	}
-}
 
-enum escerr sidxtocord(const screen* const scr, usize i, u16* x, u16* y)
-{
-	*y = i / scr->termsize.cols;
-	*x = i - *y * scr->termsize.cols;
-	(*x)++;
-	(*y)++;
-	return sgetcorderr(scr, *x, *y);
+	return strbuf_add(seq, len);
 }
-
-#define SWAP(x, y) \
-	x ^= y;        \
-	y ^= x;        \
-	x ^= y
 
 // TODO : Allow for saving strbuf to any file
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * --------------------- -- */
-bool srefresh(screen* const scr, bool clear)
+ESC_RESULT(void) refresh()
 {
-	if (clear && scr->refreshed) { // Won't clear if the screen has never been refreshed
-		const usize cell_cnt = scr->termsize.cols * scr->termsize.rows;
-		for (usize i = 0; i < cell_cnt; ++i) {
-			strbufadd(&scr->strbuf, u8" ", 1);
+	const size_t pgrid_cell_cnt = g_physical_grid.size.rows * g_physical_grid.size.cols;
+
+	if (g_refreshed && !g_use_virtual_grid) { // Won't clear if the screen has never been refreshed
+		for (size_t i = 0; i < pgrid_cell_cnt; ++i) {
+			ESC_TRY(void, strbuf_add(u8" ", 1));
 		}
-		strbufadd(&scr->strbuf, CSI u8"H", 2);
+		ESC_TRY(void, strbuf_add(CSI u8"H", 2));
 	}
 
-	// TODO : Account for changing termflags
-	const usize cell_cnt = scr->termsize.cols * scr->termsize.rows;
-	u16 last_x = 0, last_y = 0;
-	for (usize i = 0; i < cell_cnt; ++i) {
-		if (!scr->pbuf->tagschars[i].visible) {
+	uint16_t last_x = 0, last_y = 0;
+	for (size_t i = 0; i < pgrid_cell_cnt; ++i) {
+		if (!g_physical_grid.chars_tags[i].visible) {
 			continue;
 		}
 
-		addclrtostrbuf(scr, i, true);
-		addclrtostrbuf(scr, i, false);
+		ESC_TRY(void, strbuf_addclr(&g_physical_grid, i, true));
+		ESC_TRY(void, strbuf_addclr(&g_physical_grid, i, false));
 
-		u16 x, y;
-		sidxtocord(scr, i, &x, &y);
-		if (last_x == scr->termsize.cols - 1 && x == 0) {
-			strbufadd(&scr->strbuf, u8"\n", 1);
-		} else if (x != last_x + 1 || y != last_y) {
-			c8 mvseq[U16_WORST_PARAMSEQ_LEN(2)];
-			const usize mvseq_len = u16paramseq(mvseq, (u16[]){y, x}, 2, 'H');
-			strbufadd(&scr->strbuf, mvseq, mvseq_len);
+		const struct esc_coord coord = esc_idxtocoord(i).val;
+
+		if (last_x == g_physical_grid.size.cols - 1 && coord.x == 0) {
+			ESC_TRY(void, strbuf_add(u8"\n", 1));
+		} else if (coord.x != last_x + 1 || coord.y != last_y) {
+			char8_t mvseq[ESC_U16_WORST_PARAMSEQ_LEN(2)];
+			const size_t mvseq_len = u16paramseq(mvseq, (uint16_t[]){coord.y, coord.x}, 2, 'H');
+			ESC_TRY(void, strbuf_add(mvseq, mvseq_len));
 		}
 
-		const bool has_clr = (scr->pbuf->tagschars[i].bgtag || scr->pbuf->tagschars[i].fgtag);
-		if (!scr->pbuf->tagschars[i].c && has_clr) {
-			strbufadd(&scr->strbuf, u8" ", 1);
+		const bool has_clr = (g_physical_grid.chars_tags[i].bgclr_tag || g_physical_grid.chars_tags[i].fgclr_tag);
+		if (!g_physical_grid.chars_tags[i].c && has_clr) {
+			ESC_TRY(void, strbuf_add(u8" ", 1));
 		} else {
-			c8 mb[MAX_UTF8_CU];
-			usize mb_len = cptostr(scr->pbuf->tagschars[i].c, mb);
-			strbufadd(&scr->strbuf, mb, mb_len);
+			char8_t mb[ESC_MAX_UTF8_CU];
+			size_t mb_len = cptostr(g_physical_grid.chars_tags[i].c, mb).val;
+			ESC_TRY(void, strbuf_add(mb, mb_len));
 		}
 
 		if (has_clr) {
-			strbufadd(&scr->strbuf, CSI u8"m", 3);
+			ESC_TRY(void, strbuf_add(CSI u8"m", 3));
 		}
-		last_x = x;
-		last_y = y;
+		last_x = coord.x;
+		last_y = coord.y;
 	}
 
-	if (termprint(STDOUT, scr->strbuf->buf, scr->strbuf->cursor)) {
-		return true;
-	}
+	// TODO : vgrid
+	
+	g_refreshed = true;
 
-	// TODO : vscr
-
-	if (scr->vbuf != nullptr) {
-		// swap pointers to not move or copy memory (that would be ridiculous)
-		// the old pbuf becomes the next vbuf
-		uintptr_t addrof_pbuf = (uintptr_t)scr->pbuf;
-		uintptr_t addrof_vbuf = (uintptr_t)scr->vbuf;
-		SWAP(addrof_pbuf, addrof_vbuf);
-		scr->pbuf = (struct scrbuf*)addrof_pbuf;
-		scr->vbuf = (struct scrbuf*)addrof_vbuf;
-	}
-	scr->strbuf->cursor = 0;
-	scr->refreshed      = true;
-
-	return false;
+	return strbuf_flush();
 }
 
 
-// TODO : WTF
-inline enum escerr sgetcorderr(const screen* scr, u16 x, u16 y)
+static ESC_RESULT(void) grid_coordboundscheck(uint16_t x, uint16_t y)
 {
-	if (x > scr->termsize.cols)
-		return ESC_ERR_COORD_X;
-	if (y > scr->termsize.rows)
-		return ESC_ERR_COORD_Y;
-	return ESC_OK;
-}
-
-inline isize scordtoidx(const screen* scr, u16 x, u16 y)
-{
-	// We substract 1 to x and y since the first cell is (1, 1), not (0, 0)
-	return (sgetcorderr(scr, x, y) == ESC_OK) ? (y - 1) * scr->termsize.cols + (x - 1) : -1;
-}
-
-enum escerr ssetcp(screen* scr, c32 c, u16 x, u16 y)
-{
-	const isize idx = scordtoidx(scr, x, y);
-	if (idx != -1) {
-		scr->pbuf->tagschars[idx].visible = true;
-		scr->pbuf->tagschars[idx].c       = c;
+	if (x > g_physical_grid.size.cols) {
+		if (y > g_physical_grid.size.rows) goto xy_oob;
+		return ESC_RES_ERR(void, ESC_ERR_CELL_X_OOB);
+	} else if (y > g_physical_grid.size.rows) {
+		if (x > g_physical_grid.size.cols) goto xy_oob;
+		return ESC_RES_ERR(void, ESC_ERR_CELL_Y_OOB);
+	} else {
+		return ESC_RES_NOERR(void);
 	}
-	return sgetcorderr(scr, x, y);
+	xy_oob: // goto generates smaller code ftw
+		return ESC_RES_ERR(void, ESC_ERR_CELL_XY_OOB);
 }
 
-enum escerr ssetbgclr(screen* scr, struct termclr clr, u16 x, u16 y)
+static ESC_RESULT(void) grid_idxboundscheck(size_t i)
 {
-	const isize idx = scordtoidx(scr, x, y);
-	if (idx != -1) {
-		scr->pbuf->tagschars[idx].visible = true;
-		scr->pbuf->tagschars[idx].bgtag   = clr.tag;
-
-		scr->pbuf->bg_clrs[idx] = clr.val;
-	}
-	return sgetcorderr(scr, x, y);
-}
-enum escerr ssetfgclr(screen* scr, struct termclr clr, u16 x, u16 y)
-{
-	const isize idx = scordtoidx(scr, x, y);
-	if (idx != -1) {
-		scr->pbuf->tagschars[idx].visible = true;
-		scr->pbuf->tagschars[idx].fgtag   = clr.tag;
-
-		scr->pbuf->fg_clrs[idx] = clr.val;
-	}
-	return sgetcorderr(scr, x, y);
-}
-enum escerr ssetclrpair(screen* scr, struct termclr bgclr, struct termclr fgclr, u16 x, u16 y)
-{
-	const isize idx = scordtoidx(scr, x, y);
-	if (idx != -1) {
-		scr->pbuf->tagschars[idx].visible = true;
-		scr->pbuf->tagschars[idx].bgtag   = bgclr.tag;
-		scr->pbuf->tagschars[idx].fgtag   = fgclr.tag;
-
-		scr->pbuf->bg_clrs[idx] = bgclr.val;
-		scr->pbuf->fg_clrs[idx] = fgclr.val;
-	}
-	return sgetcorderr(scr, x, y);
+	return (i > g_physical_grid.size.cols * g_physical_grid.size.rows)
+		? ESC_RES_ERR(void, ESC_ERR_CELL_INDEX_OOB)
+		: ESC_RES_NOERR(void);
 }
 
-
-enum escerr ssetvis(const screen* scr, bool visible, uint16_t x, uint16_t y)
+ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 {
-	const isize idx = scordtoidx(scr, x, y);
-	if (idx != -1) {
-		scr->pbuf->tagschars[idx].visible = visible;
-	}
-	return sgetcorderr(scr, x, y);
+	ESC_TRY(struct esc_coord, grid_idxboundscheck(i));
+	uint16_t y = i / g_physical_grid.size.cols;
+	uint16_t x = i - y * g_physical_grid.size.cols;
+	x++;
+	y++;
+	return ESC_RES_VAL(struct esc_coord, (struct esc_coord) {
+		.y = y,
+		.x = x,
+	});
 }
 
-void saddstr(screen* scr, const c32* str32, usize strlen, u16 x, u16 y)
+ESC_RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
 {
-	for (usize i = 0; i < strlen; ++i) {
-		ssetcp(scr, str32[i], x, y);
-	}
+	ESC_TRY(size_t, grid_coordboundscheck(x, y));
+	return ESC_RES_VAL(size_t, (y - 1) * g_physical_grid.size.cols + (x - 1));
+}
+
+ESC_RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)
+{
+	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
+	ESC_TRY(void, idx);
+	g_physical_grid.chars_tags[idx.val].c       = c;
+	g_physical_grid.chars_tags[idx.val].visible = true;
+	return ESC_RES_NOERR(void);
+}
+
+ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y)
+{
+	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
+	ESC_TRY(void, idx);
+
+	g_physical_grid.chars_tags[idx.val].visible   = true;
+	g_physical_grid.chars_tags[idx.val].bgclr_tag = clr.tag;
+
+	g_physical_grid.bg_clrs[idx.val] = clr.val;
+
+	return ESC_RES_NOERR(void);
+}
+ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y)
+{
+	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
+	ESC_TRY(void, idx);
+
+	g_physical_grid.chars_tags[idx.val].visible   = true;
+	g_physical_grid.chars_tags[idx.val].fgclr_tag = clr.tag;
+
+	g_physical_grid.fg_clrs[idx.val] = clr.val;
+
+	return ESC_RES_NOERR(void);
+}
+ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y)
+{
+	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
+	ESC_TRY(void, idx);
+
+	g_physical_grid.chars_tags[idx.val].visible   = true;
+	g_physical_grid.chars_tags[idx.val].bgclr_tag = bgclr.tag;
+	g_physical_grid.chars_tags[idx.val].fgclr_tag = fgclr.tag;
+
+	g_physical_grid.bg_clrs[idx.val] = bgclr.val;
+	g_physical_grid.fg_clrs[idx.val] = fgclr.val;
+
+	return ESC_RES_NOERR(void);
+}
+
+ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y)
+{
+	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
+	ESC_TRY(void, idx);
+	g_physical_grid.chars_tags[idx.val].visible = visible;
+	return ESC_RES_NOERR(void);
 }
 

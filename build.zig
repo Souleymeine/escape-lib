@@ -32,7 +32,6 @@ const base_flags: []const []const u8 = &.{
     "-Wextra",
     "-Wvla",
     "-pedantic-errors",
-    "-ffreestanding",
 };
 const release_flags: []const []const u8 = &.{
     "-Werror",

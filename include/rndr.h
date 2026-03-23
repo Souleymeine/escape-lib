@@ -122,7 +122,7 @@ struct esc_strbuf_impl {
 ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr);
 ESC_RESULT(void) esc_deinitscr();
 
-ESC_RESULT(void) esc_refresh(bool clear);
+ESC_RESULT(void) esc_refresh();
 
 ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i);
 ESC_RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y);
