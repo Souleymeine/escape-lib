@@ -4,7 +4,7 @@
 
 #include "../../include/rndr.h"
 
-enum cu_type get_cu_type(char8_t c)
+ESC_RESULT(enum esc_cu) esc_getcu(char8_t c)
 {
 	/** See https://www.rfc-editor.org/rfc/rfc3629#section-3
 	 *  and https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G27288
@@ -18,89 +18,74 @@ enum cu_type get_cu_type(char8_t c)
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
 	if (stdc_bit_width(c) < 8) {
-		return CU_ASCII;
+		return ESC_RES_VAL(enum esc_cu, ESC_CU_ASCII);
 	} else {
-		const unsigned char leading_ones = stdc_leading_ones(c);
+		const uint8_t leading_ones = stdc_leading_ones(c);
 		if (stdc_first_leading_zero(c) == leading_ones + 1u) {
 			if (leading_ones == 1) {
-				return CU_CONTINUATION; // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
+				return ESC_RES_VAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			} else if (leading_ones <= 4) {
-				return (enum cu_type)leading_ones;
+				return ESC_RES_VAL(enum esc_cu, (enum esc_cu)leading_ones);
 			}
 		}
 	}
 
-	return CU_INVALID;
+	return ESC_RES_ERR(enum esc_cu, ESC_ERR_INVALID_UTF8_CU);
 }
 
-isize cu_cnt(const c8* str, usize strlen)
+ESC_RESULT(size_t) get_invcu(const char8_t* str, size_t len)
 {
-	usize count = 0;
-
-	enum cu_type type = CU_INVALID;
-	for (usize i = 0; i < strlen; i += type, ++count) {
-		if ((type = get_cu_type(str[i])) == CU_INVALID) {
-			return -1;
+	for (size_t i = 0; i < len; ++i) {
+		if (esc_getcu(str[i]).err == ESC_ERR_INVALID_UTF8_CU) {
+			return ESC_RES_VAL(size_t, i);
 		}
 	}
-
-	return count;
+	return ESC_RES_VAL(size_t, ESC_ERR_NO_INVALID_UTF8_CU);
 }
 
-isize get_inv_cu(const c8* str, usize strlen)
-{
-	for (usize i = 0; i < strlen; ++i) {
-		if (get_cu_type(str[i]) == CU_INVALID) {
-			return i;
-		}
-	}
-
-	return -1;
-}
-
-c32 strtocp(const c8* cp)
+ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp)
 {
 	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
-	const enum cu_type cu_t = get_cu_type(cp[0]);
-	if (cu_t == CU_ASCII) {
-		return cp[0];
+	const ESC_RESULT(enum esc_cu) cu_type = esc_getcu(cp[0]);
+	if (cu_type.val == ESC_CU_ASCII) {
+		return ESC_RES_VAL(char32_t, cp[0]);
 	}
 
-	c32 c = cp[0] & 0b00000111;
-	for (usize i = 1; i < (usize)cu_t; ++i) {
+	char32_t c = cp[0] & 0b00000111;
+	for (size_t i = 1; i < cu_type.val; ++i) {
 		c <<= 6;
 		c |= cp[i] & 0b00111111;
 	}
 
-	return c;
+	return ESC_RES_VAL(char32_t, c);
 }
 
-usize cptostr(c32 c, char8_t* dest)
+ESC_RESULT(size_t) esc_cptomb(char32_t c, char8_t* dest)
 {
 	// From : https://stackoverflow.com/questions/42012563/convert-unicode-code-points-to-utf-8-and-utf-32
 	// TODO : find the core logic and refactor if it's faster
 	if (c <= 0x7F) {
 		dest[0] = c;
-		return 1;
+		return ESC_RES_VAL(size_t, 1);
 	}
 	if (c <= 0x7FF) {
 		dest[0] = 0b11000000 | (c >> 6);
 		dest[1] = 0b10000000 | (c & 0b111111);
-		return 2;
+		return ESC_RES_VAL(size_t, 2);
 	}
 	if (c <= 0xFFFF) {
 		dest[0] = 0b11100000 | (c >> 12);
 		dest[1] = 0b10000000 | ((c >> 6) & 0b111111);
 		dest[2] = 0b10000000 | (c & 0b111111);
-		return 3;
+		return ESC_RES_VAL(size_t, 3);
 	}
 	if (c <= 0x10FFFF) {
 		dest[0] = 0b11110000 | (c >> 18);
 		dest[1] = 0b10000000 | ((c >> 12) & 0b111111);
 		dest[2] = 0b10000000 | ((c >> 6) & 0b111111);
 		dest[3] = 0b10000000 | (c & 0b111111);
-		return 4;
+		return ESC_RES_VAL(size_t, 4);
 	}
-	return 0;
+	return ESC_RES_ERR(size_t, ESC_ERR_INVALID_UNICODE_CODEPOINT);
 }
 
