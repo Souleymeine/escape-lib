@@ -48,8 +48,8 @@ enum esc_clrcode {
 };
 
 struct esc_coord {
-	const uint16_t x;
-	const uint16_t y;
+	uint16_t x;
+	uint16_t y;
 };
 _ESC_RESULT_DECL(struct esc_coord);
 
@@ -67,72 +67,55 @@ _ESC_RESULT_DECL(enum esc_cu);
 
 struct esc_strbuf_impl {
 	enum esc_strbuf_type {
-		ESC_STRBUF_CIRCULAR,
-		ESC_STRBUF_GROWABLE,
-	} buftype_tag;
+		ESC_STRBUF_CIRCULAR_STACK,
+		ESC_STRBUF_HEAP,
+	} buf_tag;
 	union {
 		struct {
-			enum {
-				ESC_STRBUF_CIRCULAR_STACK,
-				ESC_STRBUF_CIRCULAR_HEAP,
-			} alloc_tag;
-			union {
-				size_t heapsize;
-				struct {
-					char* buf;
-					size_t size;
-				} stack;
-			};
-		} circular;
+			char* buf;
+			size_t size;
+		} circular_stack;
 		struct {
-			size_t init_size;
+			size_t size;
 			float growth_rate;
-		} growable;
+		} heap;
 	};
 };
-#define ESC_STRBUF_IMPL_CIRCULAR_STACK(stack_buf) \
-&(struct esc_strbuf_impl) {                       \
-	.buf_type_tag = ESC_STRBUF_CIRCULAR,          \
-	.circular = {                                 \
-		.alloc_tag = ESC_STRBUF_CIRCULAR_STACK,   \
-		.stack = {                                \
-			.buf = stack_buf,                     \
-			.size = sizeof(stack_buf)             \
-		}                                         \
-	},                                            \
+#define ESC_STRBUF_IMPL_CIRCULAR_STACK(p_buf) \
+&(struct esc_strbuf_impl) {                   \
+	.buf_tag = ESC_STRBUF_CIRCULAR_STACK,     \
+	.circular_stack = {                       \
+		.buf = p_buf,                         \
+		.size = sizeof(p_buf)                 \
+	},                                        \
 }
-#define ESC_STRBUF_IMPL_CIRCULAR_HEAP(buf_size)  \
-&(struct esc_strbuf_impl) {                      \
-	.buf_type_tag = ESC_STRBUF_CIRCULAR,         \
-	.circular = {                                \
-		.alloc_tag = ESC_STRBUF_CIRCULAR_HEAP,   \
-		.heapsize = buf_size,                    \
-	},                                           \
+#define ESC_STRBUF_IMPL_CIRCULAR_HEAP(p_size) \
+&(struct esc_strbuf_impl) {                   \
+	.buf_tag = ESC_STRBUF_HEAP,               \
+	.heap = { .size = p_size },               \
 }
-#define ESC_STRBUF_IMPL_GROWABLE(buf_init_size, buf_growth_rate) \
-&(struct esc_strbuf_impl) {                                      \
-	.buf_type_tag = ESC_STRBUF_GROWABLE,                         \
-	.growable = {                                                \
-		.init_size = buf_init_size,                              \
-		.growth_rate buf_growth_rate,                            \
-	},                                                           \
+#define ESC_STRBUF_IMPL_GROWABLE(p_size, p_growth_rate) \
+&(struct esc_strbuf_impl) {                             \
+	.buf_tag = ESC_STRBUF_HEAP,                         \
+	.heap = {                                           \
+		.size = p_size,                                 \
+		.growth_rate = p_growth_rate,                   \
+	},                                                  \
 }
 
 // TODO : explain each possible strbuf_impl
 ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr);
 ESC_RESULT(void) esc_deinitscr();
 
-ESC_RESULT(void) esc_refresh();
+ESC_RESULT(void) esc_refresh(bool clear);
 
 ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i);
 ESC_RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y);
 
 ESC_RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y);
-
 ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y);
 ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y);
 ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y);
-
 ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y);
 
 #define ESC_UTF8(s) (char8_t*)s
@@ -141,8 +124,7 @@ ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y);
 #define ESC_MAX_CP_WIDTH UINT32_WIDTH
 
 ESC_RESULT(enum esc_cu) esc_getcu(char8_t c);
-
-ESC_RESULT(size_t) get_invcu(const char8_t* str, size_t len);
+ESC_RESULT(size_t) esc_getinvcu(const char8_t* str, size_t len);
 
 /** Returns the corresponding UTF32 character given the pointer to the first codepoint of the grapheme, 0 if str is invalid */
 ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp);

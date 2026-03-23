@@ -1,78 +1,66 @@
 #include <stdbit.h>
+#include <string.h>
 
-#include "../include/_escdef.h"
-#include "../include/escseq.h"
+#include "../../include/core.h"
 
 // From https://stackoverflow.com/questions/9721042/count-number-of-digits-which-method-is-most-efficient/9721401#9721401
-uchar cntdigits(u16 n)
+uint8_t esc_cntdigits(uint16_t n)
 {
-	static constexpr u16 powers[5]                     = {0, 10, 100, 1000, 10000};
-	static constexpr uchar maxdigits[UINT16_WIDTH + 1] = {1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5};
+	static constexpr uint16_t powers[5]                  = {0, 10, 100, 1000, 10000};
+	static constexpr uint8_t maxdigits[UINT16_WIDTH + 1] = {1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5};
 
-	const uchar digits = maxdigits[stdc_bit_width_us(n)];
+	const uint8_t digits = maxdigits[stdc_bit_width_uc(n)];
 	return (n < powers[digits - 1]) ? digits - 1 : digits;
 }
 
-// Puts ASCII representation of unsigned int N into DEST and returns the number of digits of N (`cntdigits(n)`)
-static usize utostr(c8* dest, u16 n)
+static size_t utomb(char8_t* dest, uint16_t n)
 {
-	const usize digits = cntdigits(n);
-	for (usize i = 0; i < digits; ++i) {
+	const size_t digits = esc_cntdigits(n);
+	for (size_t i = 0; i < digits; ++i) {
 		dest[digits - i - 1] = '0' + n % 10;
 		n /= 10;
 	}
 	return digits;
 }
 
-static inline usize strcpy(c8* dest, const char* src, usize n)
+size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n)
 {
-	for (usize i = 0; i < n; ++i) {
-		dest[i] = src[i];
-	}
-	return n;
-}
-
-usize seqcat(c8* dest, const struct seqel* elements, usize n)
-{
-	usize ofst = 0;
-	for (usize i = 0; i < n; ++i) {
-		switch (elements[i].type) {
-		case FMT_STR:  ofst += strcpy(dest + ofst, elements[i].str.buf, elements[i].str.len); break;
-		case FMT_U16:  ofst += utostr(dest + ofst, elements[i].uint16); break;
-		case FMT_U8:   ofst += utostr(dest + ofst, elements[i].uint8); break;
-		case FMT_CHAR: dest[ofst++] = elements[i].chr; break;
+	size_t ofst = 0;
+	for (size_t i = 0; i < n; ++i) {
+		switch (elements[i].tag) {
+		case ESC_FMT_STR:
+			memcpy(dest + ofst, elements[i].str.buf, elements[i].str.len);
+			ofst += elements[i].str.len;
+			break;
+		case ESC_FMT_CHR: dest[ofst++] = elements[i].uint8;               break;
+		case ESC_FMT_U8:  ofst += utomb(dest + ofst, elements[i].uint8);  break;
+		case ESC_FMT_U16: ofst += utomb(dest + ofst, elements[i].uint16); break;
 		}
 	}
 	return ofst;
 }
 
-#define PARAM_SLICE_COUNT(n) n * 2 + 1 // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
-
-static inline void paramelbound(struct seqel* elements, usize len, char end)
+size_t esc_u8paramseq(char8_t* dest, const uint8_t* params, size_t n, char end)
 {
-	elements[0]       = SEQ_STRL(CSI);
-	elements[len - 1] = SEQ_CHR(end);
+	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
+	struct esc_seqel els[el_cnt];
+	els[0]          = ESC_SEQ_STRL(CSI);
+	els[el_cnt - 1] = ESC_SEQ_CHR(end);
+	for (size_t i = 1; i < el_cnt - 1; i++) {
+		els[i] = (i & 1) ? ESC_SEQ_U8(params[(i - 1) / 2]) : ESC_SEQ_CHR(';');
+	}
+	return esc_seqcat(dest, els, el_cnt);
 }
 
-usize u8paramseq(c8* dest, const u8* params, usize n, char end)
+size_t esc_u16paramseq(char8_t* dest, const uint16_t* params, size_t n, char end)
 {
-	const usize el_cnt = PARAM_SLICE_COUNT(n);
-	struct seqel els[el_cnt];
-	paramelbound(els, el_cnt, end);
-	for (usize i = 1; i < el_cnt - 1; ++i) {
-		els[i] = (i & 1) ? SEQ_U8(params[(i - 1) / 2]) : SEQ_CHR(';');
+	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
+	struct esc_seqel els[el_cnt];
+	els[0]          = ESC_SEQ_STRL(CSI);
+	els[el_cnt - 1] = ESC_SEQ_CHR(end);
+	for (size_t i = 1; i < el_cnt - 1; i++) {
+		els[i] = (i & 1) ? ESC_SEQ_U16(params[(i - 1) / 2]) : ESC_SEQ_CHR(';');
 	}
-	return seqcat(dest, els, el_cnt);
-}
-
-usize u16paramseq(c8* dest, const u16* params, usize n, char end)
-{
-	const usize el_cnt = PARAM_SLICE_COUNT(n);
-	struct seqel els[el_cnt];
-	paramelbound(els, el_cnt, end);
-	for (usize i = 1; i < el_cnt - 1; ++i) {
-		els[i] = (i & 1) ? SEQ_U16(params[(i - 1) / 2]) : SEQ_CHR(';');
-	}
-	return seqcat(dest, els, el_cnt);
+	return esc_seqcat(dest, els, el_cnt);
 }
 
