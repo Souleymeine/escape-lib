@@ -18,29 +18,29 @@ ESC_RESULT(enum esc_cu) esc_getcu(char8_t c)
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
 	if (stdc_bit_width(c) < 8) {
-		return ESC_RES_VAL(enum esc_cu, ESC_CU_ASCII);
+		return ESC_RESVAL(enum esc_cu, ESC_CU_ASCII);
 	} else {
 		const uint8_t leading_ones = stdc_leading_ones_uc(c);
 		if (stdc_first_leading_zero_uc(c) == leading_ones + 1u) {
 			if (leading_ones == 1) {
-				return ESC_RES_VAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
+				return ESC_RESVAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			} else if (leading_ones <= 4) {
-				return ESC_RES_VAL(enum esc_cu, (enum esc_cu)leading_ones);
+				return ESC_RESVAL(enum esc_cu, (enum esc_cu)leading_ones);
 			}
 		}
 	}
 
-	return ESC_RES_ERR(enum esc_cu, ESC_ERR_INVALID_UTF8_CU);
+	return ESC_RESERR(enum esc_cu, ESC_ERR_INVALID_UTF8_CU);
 }
 
 ESC_RESULT(size_t) esc_getinvcu(const char8_t* str, size_t len)
 {
 	for (size_t i = 0; i < len; ++i) {
 		if (esc_getcu(str[i]).err == ESC_ERR_INVALID_UTF8_CU) {
-			return ESC_RES_VAL(size_t, i);
+			return ESC_RESVAL(size_t, i);
 		}
 	}
-	return ESC_RES_VAL(size_t, ESC_ERR_NO_INVALID_UTF8_CU);
+	return ESC_RESVAL(size_t, ESC_ERR_NO_INVALID_UTF8_CU);
 }
 
 ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp)
@@ -48,7 +48,7 @@ ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp)
 	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
 	const ESC_RESULT(enum esc_cu) cu_type = esc_getcu(cp[0]);
 	if (cu_type.val == ESC_CU_ASCII) {
-		return ESC_RES_VAL(char32_t, cp[0]);
+		return ESC_RESVAL(char32_t, cp[0]);
 	}
 
 	char32_t c = cp[0] & 0b00000111;
@@ -57,7 +57,7 @@ ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp)
 		c |= cp[i] & 0b00111111;
 	}
 
-	return ESC_RES_VAL(char32_t, c);
+	return ESC_RESVAL(char32_t, c);
 }
 
 ESC_RESULT(size_t) esc_cptomb(char32_t c, char8_t* dest)
@@ -66,26 +66,26 @@ ESC_RESULT(size_t) esc_cptomb(char32_t c, char8_t* dest)
 	// TODO : find the core logic and refactor if it's faster
 	if (c <= 0x7F) {
 		dest[0] = c;
-		return ESC_RES_VAL(size_t, 1);
+		return ESC_RESVAL(size_t, 1);
 	}
 	if (c <= 0x7FF) {
 		dest[0] = 0b11000000 | (c >> 6);
 		dest[1] = 0b10000000 | (c & 0b111111);
-		return ESC_RES_VAL(size_t, 2);
+		return ESC_RESVAL(size_t, 2);
 	}
 	if (c <= 0xFFFF) {
 		dest[0] = 0b11100000 | (c >> 12);
 		dest[1] = 0b10000000 | ((c >> 6) & 0b111111);
 		dest[2] = 0b10000000 | (c & 0b111111);
-		return ESC_RES_VAL(size_t, 3);
+		return ESC_RESVAL(size_t, 3);
 	}
 	if (c <= 0x10FFFF) {
 		dest[0] = 0b11110000 | (c >> 18);
 		dest[1] = 0b10000000 | ((c >> 12) & 0b111111);
 		dest[2] = 0b10000000 | ((c >> 6) & 0b111111);
 		dest[3] = 0b10000000 | (c & 0b111111);
-		return ESC_RES_VAL(size_t, 4);
+		return ESC_RESVAL(size_t, 4);
 	}
-	return ESC_RES_ERR(size_t, ESC_ERR_INVALID_UNICODE_CODEPOINT);
+	return ESC_RESERR(size_t, ESC_ERR_INVALID_UNICODE_CODEPOINT);
 }
 

@@ -49,7 +49,7 @@ void esc_init()
 ESC_RESULT(void) esc_settermflags(uint16_t flags)
 {
 	if (flags == g_flags) {
-		return ESC_RES_ERR(void, ESC_ERR_TERMFLAGS_ALREADY_SET);
+		return ESC_RESERR(void, ESC_ERR_TERMFLAGS_ALREADY_SET);
 	}
 
 #if __unix__
@@ -73,11 +73,11 @@ ESC_RESULT(void) esc_settermflags(uint16_t flags)
 		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?25"),   ESC_SEQCHR(flags & ESC_TERM_HIDE_CURSOR ? 'l' : 'h')
 	}, 6);
 
-	ESC_RET_IFERR(void, esc_termwrite(ESC_STDOUT, seq, len));
+	ESC_TRY(void, esc_termwrite(ESC_STDOUT, seq, len));
 
 	g_flags = flags;
 
-	return ESC_RES_NOERR(void);
+	return ESC_RESNOERR(void);
 }
 
 uint16_t esc_gettermflags() { return g_flags; }
@@ -93,9 +93,9 @@ ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_
 #if __unix__
 	const ssize_t bytes_written = write(stream, buf, len); // stream directly maps to POSIX fd
 	if (bytes_written == -1) {
-		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_FAILED);
+		return ESC_RESERR(void, ESC_ERR_TERMWRITE_FAILED);
 	} else if (bytes_written != (ssize_t)len) {
-		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
+		return ESC_RESERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #elif _WIN32
 	UINT h;
@@ -111,7 +111,7 @@ ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_
 		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #endif
-	return  ESC_RES_NOERR(void);
+	return  ESC_RESNOERR(void);
 }
 
 void esc_cleanup()

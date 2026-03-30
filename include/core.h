@@ -45,6 +45,7 @@ struct esc_seqel {
 #define ESC_SEQU16(n)    (struct esc_seqel){.tag = ESC_FMT_U16, .uint16 = n}
 
 #define ESC_ARRARG(T, ...) (T[])__VA_ARGS__, sizeof((T[])__VA_ARGS__)/sizeof(T)
+#define ESC_STRLARG(s) s, sizeof(s) - 1
 
 /** Returns the number of digits in base 10 of 16 bit unsigned int x */
 uint8_t esc_cntdigits(uint16_t n);
