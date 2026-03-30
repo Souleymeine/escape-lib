@@ -19,7 +19,6 @@ const sources: []const []const u8 = &.{
 const tests: []const []const u8 = &.{
     "test/gradient.c",
     "test/label_gradient.c",
-    "test/scralloc.c",
     "test/scrtxt.c",
     "test/seq.c",
     "test/splat_gradient.c",

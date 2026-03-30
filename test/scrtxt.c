@@ -1,23 +1,24 @@
 #include <stdio.h>
 
-#include "../include/screen.h"
-#include "../include/terminal.h"
+#include "../include/core.h"
+#include "../include/rndr.h"
 
 int main()
 {
-	init_flags(TERM_ALTBUF | TERM_NO_ECHO | TERM_HIDE_CURSOR);
+	esc_init();
+	(void)esc_settermflags(ESC_TERM_ALTBUF | ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR);
 
-	setcp(U'é', 5, 5);
-	setcp(U'┌', 6, 5);
-	setcp(U'a', 15, 8);
-	setvis(false, 5, 5);
+	(void)esc_setcp(U'é', 5, 5);
+	(void)esc_setcp(U'┌', 6, 5);
+	(void)esc_setcp(U'a', 15, 8);
+	(void)esc_setvis(false, 5, 5);
 
-	setclrpair(CLR_RGB(10, 20, 50), CLR_CODE(31), 15, 8);
-	setfgclr(CLR_RGB(125, 25, 50), 10, 8);
-	refresh(true);
+	(void)esc_setclrpair(ESC_CLR_RGB(10, 20, 50), ESC_CLR_CODE(31), 15, 8);
+	(void)esc_setfgclr(ESC_CLR_RGB(125, 25, 50), 10, 8);
+	(void)esc_refresh(true);
 
 	getchar();
-	cleanup_term();
+	esc_cleanup();
 	return 0;
 }
 
