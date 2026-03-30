@@ -4,11 +4,13 @@
 #include "../include/rndr.h"
 #include "../include/core.h"
 
+
 int main(int argc, char* argv[])
 {
+	static char strbuf[1024];
 	esc_init();
 	(void)esc_settermflags(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF);
-	(void)esc_initscr(ESC_STRBUF_IMPL_CIRCULAR_HEAP(16), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
+	(void)esc_initscr(ESC_STRBUF_IMPL_CIRCULAR_STACK(strbuf), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
 
 	const char32_t cp = (argc == 1) ? U'é' : esc_mbtocp(ESC_UTF8(argv[1])).val;
 

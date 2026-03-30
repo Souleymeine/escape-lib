@@ -164,9 +164,7 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 		+ (virtual_grid * PADDING_BETWEEN(clrvals_bytesize, char_and_tag)); // padding between the two grids (if virtual_grid)
 	
 	// We add the strbuf in the arena if it's circular and heap allocated as it won't jump around while growing
-	if (strbuf_impl->buf_tag == ESC_STRBUF_CIRCULAR_STACK) {
-		arena_heapsize += strbuf_impl->circular_stack.size;
-	} else if (strbuf_impl->buf_tag == ESC_STRBUF_HEAP && strbuf_impl->heap.growth_rate == 0) {
+	if (strbuf_impl->buf_tag == ESC_STRBUF_HEAP && strbuf_impl->heap.growth_rate == 0) {
 		arena_heapsize += strbuf_impl->heap.size;
 	}
 
@@ -233,16 +231,6 @@ static ESC_RESULT(void) strbuf_flush()
 	return ESC_RESNOERR(void);
 }
 
-// Copies str of size len asserting it can fit at the string buffer's current cursor. Asserts len > 0 and str can fit inside g_strbuf
-static void strbuf_copy(const char8_t* str, size_t len)
-{
-	assert(len > 0);
-	assert(g_strbuf.capacity - g_strbuf.len >= len);
-
-	memcpy(g_strbuf.ptr + g_strbuf.len, str, len);
-	g_strbuf.len += len;
-}
-
 /**
  * Adds `str` of size `len` to the string buffer while growing it or flushing if necessary.
  * `len` may be bigger than `g_strbuf.capacity`.
@@ -252,7 +240,7 @@ static ESC_RESULT(void) strbuf_add(const char8_t* str, size_t len)
 {
 	assert(len > 0);
 
-	const bool will_overflow = g_strbuf.len + len > g_strbuf.capacity;
+	bool will_overflow = g_strbuf.len + len > g_strbuf.capacity;
 
 	if (g_strbuf.growable && will_overflow) {
 		ESC_TRY(void, strbuf_grow());
@@ -261,13 +249,17 @@ static ESC_RESULT(void) strbuf_add(const char8_t* str, size_t len)
 
 		if (capacity_left == 0) {
 			ESC_TRY(void, strbuf_flush());
-		} else if (will_overflow) {
-			strbuf_copy(str, capacity_left);
+			will_overflow = g_strbuf.len + len > g_strbuf.capacity; // update since len is now 0
+		}
+		if (will_overflow) {
+			memcpy(g_strbuf.ptr + g_strbuf.len, str, capacity_left);
+			g_strbuf.len += capacity_left;
 			return strbuf_add(str + capacity_left, len - capacity_left);
 		}
 	}
 
-	strbuf_copy(str, len);
+	memcpy(g_strbuf.ptr + g_strbuf.len, str, len);
+	g_strbuf.len += len;
 	return ESC_RESNOERR(void);
 }
 
