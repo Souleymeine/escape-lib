@@ -50,7 +50,7 @@ struct esc_seqel {
 #define ESC_STRLARG(s) s, sizeof(s) - 1
 
 /** Returns the number of digits in base 10 of 16 bit unsigned int x */
-uint8_t esc_cntdigits(uint16_t n);
+uint8_t esc_digits(uint16_t n);
 
 size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n);
 
@@ -72,7 +72,7 @@ struct esc_termsize {
 	uint16_t ypix;
 };
 
-struct esc_termsize esc_getsize();
+struct esc_termsize esc_gettermsize();
 
 enum esc_termflags {
 	ESC_TERM_ALTBUF      = 0x1,
@@ -86,7 +86,13 @@ enum esc_stdstream {
 	ESC_STDERR = 2,
 };
 
-void esc_init();
+
+struct esc_init_opts {
+	bool set_termflags;
+	uint16_t termflags;
+};
+
+ESC_RESULT(void) esc_init(uint16_t flags);
 /* Resets the terminal with none of the flags present in `enum termflags`. */
 void esc_cleanup();
 
@@ -99,7 +105,7 @@ uint16_t esc_gettermflags();
 /**
  * Simple UTF-8 unbuffered cross platform terminal writer
  * Returns `true` if len doesn't match how many bytes were written or if nothing was written, false otherwise.
- * */
+ */
 ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_t len);
 #define ESC_ERRLOG(s) (void)esc_termwrite(ESC_STDERR, s, sizeof(s))
 

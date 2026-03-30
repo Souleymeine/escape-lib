@@ -4,7 +4,7 @@
 #include "../../include/core.h"
 
 // From https://stackoverflow.com/questions/9721042/count-number-of-digits-which-method-is-most-efficient/9721401#9721401
-uint8_t esc_cntdigits(uint16_t n)
+uint8_t esc_digits(uint16_t n)
 {
 	static constexpr uint16_t powers[5]                  = {0, 10, 100, 1000, 10000};
 	static constexpr uint8_t maxdigits[UINT16_WIDTH + 1] = {1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5};
@@ -15,7 +15,7 @@ uint8_t esc_cntdigits(uint16_t n)
 
 static size_t utomb(char8_t* dest, uint16_t n)
 {
-	const size_t digits = esc_cntdigits(n);
+	const size_t digits = esc_digits(n);
 	for (size_t i = 0; i < digits; ++i) {
 		dest[digits - i - 1] = '0' + n % 10;
 		n /= 10;

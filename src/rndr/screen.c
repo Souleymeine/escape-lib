@@ -50,8 +50,6 @@ static struct rndr_arena g_rndr_arena;
 static bool g_refreshed = false;
 static bool g_use_vgrid = false;
 
-static bool g_scr_initialized = false;
-
 /** --- Windows/POSIX basic heap de/allocator --- */
 // For testing purposes
 // The library's custom allocator should be as fast or faster than malloc
@@ -65,7 +63,7 @@ static bool g_scr_initialized = false;
 static ESC_RESULT_PTR(void) heapalloc(size_t pagesize)
 {
 #if STD_MALLOC
-	return ESC_RESPTR_VAL(void, malloc(pagesize));
+	return ESC_RESPTRVAL(void, malloc(pagesize));
 	// TODO : handle all relevant values of errno
 #else
 #if __unix__
@@ -155,7 +153,7 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 
 	size_t arena_heapsize = 0;
 
-	const struct esc_termsize size = esc_getsize();
+	const struct esc_termsize size = esc_gettermsize();
 	const size_t cell_count        = size.cols * size.rows;
 
 	const size_t cts_bytesize     = cell_count * (sizeof(char_and_tag));
@@ -191,7 +189,6 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 	ESC_TRY(void, strbuf_init(strbuf_impl, page.val, &arena_ofst));
 	assert(arena_ofst == arena_heapsize);
 
-	g_scr_initialized = true;
 	return ESC_RESNOERR(void);
 }
 

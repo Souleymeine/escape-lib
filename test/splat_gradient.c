@@ -6,15 +6,14 @@
 
 int main(int argc, char* argv[])
 {
-	esc_init();
-	(void)esc_initscr(ESC_STRBUF_IMPL_GROWABLE(2048, 0.5f), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
-	(void)esc_settermflags(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF);
+	(void)esc_init(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF);
+	(void)esc_initscr(ESC_STRBUF_IMPL_GROWABLE(1024, 0.5f), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
 	
 	const char32_t cp = (argc == 1) ? U'é' : esc_mbtocp(ESC_UTF8(argv[1])).val;
 
-	const struct esc_termsize size = esc_getsize();
-	const float increment      = 0.05f;
-	float progress             = 0;
+	const struct esc_termsize size = esc_gettermsize();
+	const float increment = 0.05f;
+	float progress = 0;
 	do {
 		for (uint16_t y = 0; y < size.rows; y++) {
 			for (uint16_t x = 0; x < size.cols; x++) {

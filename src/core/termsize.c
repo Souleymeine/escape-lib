@@ -8,7 +8,7 @@
 
 #include "../../include/core.h"
 
-struct esc_termsize esc_getsize()
+struct esc_termsize esc_gettermsize()
 {
 	// TODO : get pixel size on linux/BSD tty
 #if __unix__
@@ -32,7 +32,7 @@ struct esc_termsize esc_getsize()
 	GetWindowRect(conwin_hndl, &conwin_rect);
 
 	CONSOLE_SCREEN_BUFFER_INFO scrbuf_info;
-	GetConsoleScreenBufferInfo(*get_g_stdout_hndl(), &scrbuf_info);
+	GetConsoleScreenBufferInfo(esc_getstdout_h(), &scrbuf_info);
 
 	return (struct esc_termsize) {
 		.rows = scrbuf_info.dwSize.Y,

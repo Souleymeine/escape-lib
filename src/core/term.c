@@ -23,7 +23,7 @@ static UINT   g_og_output_cp;
 static uint16_t g_flags = 0;
 static uint16_t g_og_flags = 0;
 
-void esc_init()
+ESC_RESULT(void) esc_init(uint16_t flags)
 {
 #if __unix__
 	tcgetattr(STDIN_FILENO, &g_termattr);
@@ -43,15 +43,14 @@ void esc_init()
 
 	// TODO : gather termcaps but without termcap/terminfo
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
+
+	ESC_TRY(void, esc_settermflags(flags));
+	return ESC_RESNOERR(void);
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
 ESC_RESULT(void) esc_settermflags(uint16_t flags)
 {
-	if (flags == g_flags) {
-		return ESC_RESERR(void, ESC_ERR_TERMFLAGS_ALREADY_SET);
-	}
-
 #if __unix__
 	g_termattr.c_lflag = (flags & ESC_TERM_NO_ECHO)
 		? g_termattr.c_lflag & (~ECHO)
@@ -111,7 +110,7 @@ ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_
 		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #endif
-	return  ESC_RESNOERR(void);
+	return ESC_RESNOERR(void);
 }
 
 void esc_cleanup()

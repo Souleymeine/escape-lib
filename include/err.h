@@ -83,7 +83,6 @@ enum escerror : unsigned {
 // global
 	ESC_ERR_OOM = 1,
 // core
-	ESC_ERR_TERMFLAGS_ALREADY_SET,
 	ESC_ERR_TERMWRITE_FAILED,
 	ESC_ERR_TERMWRITE_TRUNCATED,
 // io

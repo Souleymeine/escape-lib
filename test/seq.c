@@ -7,7 +7,7 @@
 int main(int argc, char* argv[])
 {
 	const unsigned int a = (argc == 1) ? 99 : atoi(argv[1]);
-	printf("%u has %d digits\n", a, esc_cntdigits(a));
+	printf("%u has %d digits\n", a, esc_digits(a));
 
 	char8_t seq[100];
 	const size_t len = esc_seqcat(seq, ESC_ARRARG(struct esc_seqel, {
