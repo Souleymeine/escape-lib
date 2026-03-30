@@ -118,34 +118,34 @@ _ESC_RESULT_DECL(char32_t);
 #define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T)
 
 // Variadics to remove the necessity of parenthesis when using inline structs
-#define ESC_RES_VAL(T, ...) (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
-#define ESC_RES_ERR(T, ...) (ESC_RESULT(T)) {.err = __VA_ARGS__}
-#define ESC_RES_NOERR(T)    (ESC_RESULT(T)) {.err = 0}
+#define ESC_RESVAL(T, ...) (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
+#define ESC_RESERR(T, ...) (ESC_RESULT(T)) {.err = __VA_ARGS__}
+#define ESC_RESNOERR(T)    (ESC_RESULT(T)) {.err = 0}
 
-#define ESC_RESPTR_VAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
-#define ESC_RESPTR_ERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
-#define ESC_RESPTR_NOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
+#define ESC_RESPTRVAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
+#define ESC_RESPTRERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
+#define ESC_RESPTRNOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
 
 #if __STDC_VERSION__ >= 202311L
-#define ESC_RET_IFERR(T, res)                           \
-	do {                                                \
-		const auto r = res;                             \
-		if (r.err) return ESC_RES_ERR(T, r.err);        \
+#define ESC_TRY(T, res)                            \
+	do {                                           \
+		const auto r = res;                        \
+		if (r.err) return ESC_RESERR(T, r.err);    \
 	} while (false)
-#define ESC_RET_IFERR_PTR(T, res)                       \
-	do {                                                \
-		const auto r = res;                             \
-		if (r.err) return ESC_RESPTR_ERR(T, r.err);     \
+#define ESC_TRY_PTR(T, res)                        \
+	do {                                           \
+		const auto r = res;                        \
+		if (r.err) return ESC_RESPTRERR(T, r.err); \
 	} while (false)
 #else
-#define ESC_RET_IFERR(T, res)                           \
-	do {                                                \
-		const __typeof(x)__(res) r = res;               \
-		if (r.err) return ESC_RES_ERR(T, r.err);        \
+#define ESC_TRY(T, res)                              \
+	do {                                             \
+		const __typeof(x)__(res) r = res;            \
+		if (r.err) return ESC_RESERR(T, r.err);      \
 	} while (false)
-#define ESC_RET_IFERR_PTR(T, res)                       \
-	do {                                                \
-		const __typeof(x)__(res) r = res;               \
-		if (r.err)   return ESC_RESPTR_ERR(T, r.err);   \
+#define ESC_TRY_PTR(T, res)                          \
+	do {                                             \
+		const __typeof(x)__(res) r = res;            \
+		if (r.err)   return ESC_RESPTRERR(T, r.err); \
 	} while (false)
 #endif

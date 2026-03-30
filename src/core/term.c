@@ -69,11 +69,11 @@ ESC_RESULT(void) esc_settermflags(uint16_t flags)
 
 	char8_t seq[14];
 	const size_t len = esc_seqcat(seq, (struct esc_seqel[]) {
-		ESC_SEQ_STRL(CSI), ESC_SEQ_STRL("?1049"), ESC_SEQ_CHR(flags & ESC_TERM_ALTBUF ?      'h' : 'l'),
-		ESC_SEQ_STRL(CSI), ESC_SEQ_STRL("?25"),   ESC_SEQ_CHR(flags & ESC_TERM_HIDE_CURSOR ? 'l' : 'h')
+		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?1049"), ESC_SEQCHR(flags & ESC_TERM_ALTBUF ?      'h' : 'l'),
+		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?25"),   ESC_SEQCHR(flags & ESC_TERM_HIDE_CURSOR ? 'l' : 'h')
 	}, 6);
 
-	ESC_TRY(void, esc_termwrite(ESC_STDOUT, seq, len));
+	ESC_RET_IFERR(void, esc_termwrite(ESC_STDOUT, seq, len));
 
 	g_flags = flags;
 
