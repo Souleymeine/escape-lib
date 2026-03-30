@@ -38,11 +38,13 @@ struct esc_seqel {
 #define ESC_U8_WORST_PARAMSEQ_LEN(n)  (2 + n * ESC_U8_MAX_DIGITS  + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
 #define ESC_U16_WORST_PARAMSEQ_LEN(n) (2 + n * ESC_U16_MAX_DIGITS + n) // same here
 
-#define ESC_SEQ_STR(s, l) (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = l}
-#define ESC_SEQ_STRL(s)   (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = sizeof(s) - 1} // FOR STRING LITERALS ONLY!
-#define ESC_SEQ_CHR(c)    (struct esc_seqel){.tag = ESC_FMT_CHR, .uint8 = c}
-#define ESC_SEQ_U8(n)     (struct esc_seqel){.tag = ESC_FMT_U8,  .uint8 = n}
-#define ESC_SEQ_U16(n)    (struct esc_seqel){.tag = ESC_FMT_U16, .uint16 = n}
+#define ESC_SEQSTR(s, l) (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = l}
+#define ESC_SEQSTRL(s)   (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = sizeof(s) - 1} // FOR STRING LITERALS ONLY!
+#define ESC_SEQCHR(c)    (struct esc_seqel){.tag = ESC_FMT_CHR, .uint8 = c}
+#define ESC_SEQU8(n)     (struct esc_seqel){.tag = ESC_FMT_U8,  .uint8 = n}
+#define ESC_SEQU16(n)    (struct esc_seqel){.tag = ESC_FMT_U16, .uint16 = n}
+
+#define ESC_ARRARG(T, ...) (T[])__VA_ARGS__, sizeof((T[])__VA_ARGS__)/sizeof(T)
 
 /** Returns the number of digits in base 10 of 16 bit unsigned int x */
 uint8_t esc_cntdigits(uint16_t n);
@@ -53,12 +55,12 @@ size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n);
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 8 bit integer (useful for style/color codes)
  * And returns the length of said sequence
  */
-size_t esc_u8paramseq(char8_t* dest, const uint8_t* params, size_t n, char end);
+size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end);
 /**
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 16 bit integer
  * And returns the length of said sequence
  */
-size_t esc_u16paramseq(char8_t* dest, const uint16_t* params, size_t n, char end);
+size_t esc_u16seq(char8_t* dest, const uint16_t* params, size_t n, char end);
 
 struct esc_termsize {
 	uint16_t cols;

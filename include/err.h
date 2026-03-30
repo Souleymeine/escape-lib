@@ -81,8 +81,7 @@ ESC_RESULT_TYPENAME_PTR(T) {                  \
 #define ESC_OK(res) (!res.err)
 enum escerror : unsigned {
 // global
-	ESC_ERR_OUT_OF_MEMORY = 1,
-	ESC_ERR_CANNOT_FREE_MEMORY,
+	ESC_ERR_OOM = 1,
 // core
 	ESC_ERR_TERMFLAGS_ALREADY_SET,
 	ESC_ERR_TERMWRITE_FAILED,
@@ -121,30 +120,30 @@ _ESC_RESULT_DECL(char32_t);
 // Variadics to remove the necessity of parenthesis when using inline structs
 #define ESC_RES_VAL(T, ...) (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
 #define ESC_RES_ERR(T, ...) (ESC_RESULT(T)) {.err = __VA_ARGS__}
-#define ESC_RES_NOERR(T)  (ESC_RESULT(T)) {.err = 0}
+#define ESC_RES_NOERR(T)    (ESC_RESULT(T)) {.err = 0}
 
 #define ESC_RESPTR_VAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
 #define ESC_RESPTR_ERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
-#define ESC_RESPTR_NOERR(T)  (ESC_RESULT_PTR(T)) {.err = 0}
+#define ESC_RESPTR_NOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
 
 #if __STDC_VERSION__ >= 202311L
-#define ESC_TRY(T, res)                                 \
+#define ESC_RET_IFERR(T, res)                           \
 	do {                                                \
 		const auto r = res;                             \
 		if (r.err) return ESC_RES_ERR(T, r.err);        \
 	} while (false)
-#define ESC_TRY_PTR(T, res)                             \
+#define ESC_RET_IFERR_PTR(T, res)                       \
 	do {                                                \
 		const auto r = res;                             \
 		if (r.err) return ESC_RESPTR_ERR(T, r.err);     \
 	} while (false)
 #else
-#define ESC_TRY(T, res)                                 \
+#define ESC_RET_IFERR(T, res)                           \
 	do {                                                \
 		const __typeof(x)__(res) r = res;               \
 		if (r.err) return ESC_RES_ERR(T, r.err);        \
 	} while (false)
-#define ESC_TRY_PTR(T, res)                             \
+#define ESC_RET_IFERR_PTR(T, res)                       \
 	do {                                                \
 		const __typeof(x)__(res) r = res;               \
 		if (r.err)   return ESC_RESPTR_ERR(T, r.err);   \
