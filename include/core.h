@@ -38,6 +38,8 @@ struct esc_seqel {
 #define ESC_U8_WORST_PARAMSEQ_LEN(n)  (2 + n * ESC_U8_MAX_DIGITS  + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
 #define ESC_U16_WORST_PARAMSEQ_LEN(n) (2 + n * ESC_U16_MAX_DIGITS + n) // same here
 
+#define ESC_SEQEL_MAX_PARAM 13 // RGB is the biggest known for now
+
 #define ESC_SEQSTR(s, l) (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = l}
 #define ESC_SEQSTRL(s)   (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = sizeof(s) - 1} // FOR STRING LITERALS ONLY!
 #define ESC_SEQCHR(c)    (struct esc_seqel){.tag = ESC_FMT_CHR, .uint8 = c}

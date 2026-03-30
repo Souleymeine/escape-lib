@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[])
 {
-	static char strbuf[1024];
+	static char strbuf[1024 * 4];
 	esc_init();
 	(void)esc_settermflags(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF);
 	(void)esc_initscr(ESC_STRBUF_IMPL_CIRCULAR_STACK(strbuf), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));

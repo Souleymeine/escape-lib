@@ -43,8 +43,8 @@ size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n)
 size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
-	struct esc_seqel els[el_cnt];
-	els[0]          = ESC_SEQSTRL(CSI);
+	struct esc_seqel els[ESC_SEQEL_MAX_PARAM];
+	els[0] = ESC_SEQSTRL(CSI);
 	els[el_cnt - 1] = ESC_SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
 		els[i] = (i & 1) ? ESC_SEQU8(params[(i - 1) / 2]) : ESC_SEQCHR(';');
@@ -55,8 +55,8 @@ size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end)
 size_t esc_u16seq(char8_t* dest, const uint16_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
-	struct esc_seqel els[el_cnt];
-	els[0]          = ESC_SEQSTRL(CSI);
+	struct esc_seqel els[ESC_SEQEL_MAX_PARAM];
+	els[0] = ESC_SEQSTRL(CSI);
 	els[el_cnt - 1] = ESC_SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
 		els[i] = (i & 1) ? ESC_SEQU16(params[(i - 1) / 2]) : ESC_SEQCHR(';');
