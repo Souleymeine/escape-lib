@@ -40,26 +40,26 @@ size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n)
 	return ofst;
 }
 
-size_t esc_u8paramseq(char8_t* dest, const uint8_t* params, size_t n, char end)
+size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
 	struct esc_seqel els[el_cnt];
-	els[0]          = ESC_SEQ_STRL(CSI);
-	els[el_cnt - 1] = ESC_SEQ_CHR(end);
+	els[0]          = ESC_SEQSTRL(CSI);
+	els[el_cnt - 1] = ESC_SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
-		els[i] = (i & 1) ? ESC_SEQ_U8(params[(i - 1) / 2]) : ESC_SEQ_CHR(';');
+		els[i] = (i & 1) ? ESC_SEQU8(params[(i - 1) / 2]) : ESC_SEQCHR(';');
 	}
 	return esc_seqcat(dest, els, el_cnt);
 }
 
-size_t esc_u16paramseq(char8_t* dest, const uint16_t* params, size_t n, char end)
+size_t esc_u16seq(char8_t* dest, const uint16_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
 	struct esc_seqel els[el_cnt];
-	els[0]          = ESC_SEQ_STRL(CSI);
-	els[el_cnt - 1] = ESC_SEQ_CHR(end);
+	els[0]          = ESC_SEQSTRL(CSI);
+	els[el_cnt - 1] = ESC_SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
-		els[i] = (i & 1) ? ESC_SEQ_U16(params[(i - 1) / 2]) : ESC_SEQ_CHR(';');
+		els[i] = (i & 1) ? ESC_SEQU16(params[(i - 1) / 2]) : ESC_SEQCHR(';');
 	}
 	return esc_seqcat(dest, els, el_cnt);
 }
