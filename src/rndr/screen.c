@@ -50,6 +50,8 @@ static struct rndr_arena g_rndr_arena;
 static bool g_refreshed = false;
 static bool g_use_vgrid = false;
 
+static bool g_scr_initialized = false;
+
 /** --- Windows/POSIX basic heap de/allocator --- */
 // For testing purposes
 // The library's custom allocator should be as fast or faster than malloc
@@ -189,6 +191,7 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 	ESC_TRY(void, strbuf_init(strbuf_impl, page.val, &arena_ofst));
 	assert(arena_ofst == arena_heapsize);
 
+	g_scr_initialized = true;
 	return ESC_RESNOERR(void);
 }
 
@@ -336,7 +339,7 @@ ESC_RESULT(void) esc_refresh(bool clear)
 }
 
 
-static ESC_RESULT(void) grid_coordboundscheck(uint16_t x, uint16_t y)
+static ESC_RESULT(void) grid_boundscheck(uint16_t x, uint16_t y)
 {
 	if (x > g_pgrid.size.cols) {
 		if (y > g_pgrid.size.rows) goto xy_oob;
@@ -349,16 +352,11 @@ static ESC_RESULT(void) grid_coordboundscheck(uint16_t x, uint16_t y)
 xy_oob: // goto ftw! (-- https://godbolt.org/z/s8j71cn45 -- , smaller code)
 	return ESC_RESERR(void, ESC_ERR_CELL_XY_OOB);
 }
-static ESC_RESULT(void) grid_idxboundscheck(size_t i)
-{
-	return (i > g_pgrid.size.cols * g_pgrid.size.rows)
-		? ESC_RESERR(void, ESC_ERR_CELL_INDEX_OOB)
-		: ESC_RESNOERR(void);
-}
 
 ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 {
-	ESC_TRY(struct esc_coord, grid_idxboundscheck(i));
+	if (i > g_pgrid.size.cols * g_pgrid.size.rows) ESC_RESERR(struct esc_coord, ESC_ERR_CELL_INDEX_OOB);
+
 	const uint16_t y = i / g_pgrid.size.cols;
 	const uint16_t x = i - y * g_pgrid.size.cols;
 	return ESC_RESVAL(struct esc_coord, (struct esc_coord) {
@@ -369,65 +367,65 @@ ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 
 ESC_RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
 {
-	ESC_TRY(size_t, grid_coordboundscheck(x, y));
+	ESC_TRY(size_t, grid_boundscheck(x, y));
 	return ESC_RESVAL(size_t, y * g_pgrid.size.cols + x);
 }
 
 ESC_RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)
 {
-	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
-	ESC_TRY(void, idx);
+	ESC_TRY(void, grid_boundscheck(x, y));
+	const size_t idx = esc_coordtoidx(x, y).val;
 
-	g_pgrid.chars_tags[idx.val].visible = true;
-	g_pgrid.chars_tags[idx.val].c       = c;
+	g_pgrid.chars_tags[idx].visible = true;
+	g_pgrid.chars_tags[idx].c       = c;
 
 	return ESC_RESNOERR(void);
 }
 
 ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 {
-	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
-	ESC_TRY(void, idx);
+	ESC_TRY(void, grid_boundscheck(x, y));
+	const size_t idx = esc_coordtoidx(x, y).val;
 
-	g_pgrid.chars_tags[idx.val].visible   = true;
-	g_pgrid.chars_tags[idx.val].bgclr_tag = clr.tag;
+	g_pgrid.chars_tags[idx].visible   = true;
+	g_pgrid.chars_tags[idx].bgclr_tag = clr.tag;
 
-	g_pgrid.bg_clrs[idx.val] = clr.val;
+	g_pgrid.bg_clrs[idx] = clr.val;
 
 	return ESC_RESNOERR(void);
 }
 ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 {
-	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
-	ESC_TRY(void, idx);
+	ESC_TRY(void, grid_boundscheck(x, y));
+	const size_t idx = esc_coordtoidx(x, y).val;
 
-	g_pgrid.chars_tags[idx.val].visible   = true;
-	g_pgrid.chars_tags[idx.val].fgclr_tag = clr.tag;
+	g_pgrid.chars_tags[idx].visible   = true;
+	g_pgrid.chars_tags[idx].fgclr_tag = clr.tag;
 
-	g_pgrid.fg_clrs[idx.val] = clr.val;
+	g_pgrid.fg_clrs[idx] = clr.val;
 
 	return ESC_RESNOERR(void);
 }
 ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y)
 {
-	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
-	ESC_TRY(void, idx);
+	ESC_TRY(void, grid_boundscheck(x, y));
+	const size_t idx = esc_coordtoidx(x, y).val;
 
-	g_pgrid.chars_tags[idx.val].visible   = true;
-	g_pgrid.chars_tags[idx.val].bgclr_tag = bgclr.tag;
-	g_pgrid.chars_tags[idx.val].fgclr_tag = fgclr.tag;
+	g_pgrid.chars_tags[idx].visible   = true;
+	g_pgrid.chars_tags[idx].bgclr_tag = bgclr.tag;
+	g_pgrid.chars_tags[idx].fgclr_tag = fgclr.tag;
 
-	g_pgrid.bg_clrs[idx.val] = bgclr.val;
-	g_pgrid.fg_clrs[idx.val] = fgclr.val;
+	g_pgrid.bg_clrs[idx] = bgclr.val;
+	g_pgrid.fg_clrs[idx] = fgclr.val;
 
 	return ESC_RESNOERR(void);
 }
 
 ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y)
 {
-	const ESC_RESULT(size_t) idx = esc_coordtoidx(x, y);
-	ESC_TRY(void, idx);
-	g_pgrid.chars_tags[idx.val].visible = visible;
+	ESC_TRY(void, grid_boundscheck(x, y));
+	const size_t idx = esc_coordtoidx(x, y).val;
+	g_pgrid.chars_tags[idx].visible = visible;
 	return ESC_RESNOERR(void);
 }
 
