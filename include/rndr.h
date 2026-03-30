@@ -89,11 +89,7 @@ struct esc_strbuf_impl {
 		.size = sizeof(p_buf)                 \
 	},                                        \
 }
-#define ESC_STRBUF_IMPL_CIRCULAR_HEAP(p_size) \
-&(struct esc_strbuf_impl) {                   \
-	.buf_tag = ESC_STRBUF_HEAP,               \
-	.heap = { .size = p_size },               \
-}
+#define ESC_STRBUF_IMPL_CIRCULAR_HEAP(p_size) ESC_STRBUF_IMPL_GROWABLE(p_size, 0.0f)
 #define ESC_STRBUF_IMPL_GROWABLE(p_size, p_growth_rate) \
 &(struct esc_strbuf_impl) {                             \
 	.buf_tag = ESC_STRBUF_HEAP,                         \
@@ -105,7 +101,7 @@ struct esc_strbuf_impl {
 
 // TODO : explain each possible strbuf_impl
 ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr);
-ESC_RESULT(void) esc_deinitscr();
+void esc_deinitscr();
 
 ESC_RESULT(void) esc_refresh(bool clear);
 
