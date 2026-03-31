@@ -23,7 +23,7 @@ static UINT   g_og_output_cp;
 static uint16_t g_flags = 0;
 static uint16_t g_og_flags = 0;
 
-ESC_RESULT(void) esc_init(uint16_t flags)
+ESC_RESULT(void) esc_init(struct esc_init_opts opt_flags)
 {
 #if __unix__
 	tcgetattr(STDIN_FILENO, &g_termattr);
@@ -44,7 +44,9 @@ ESC_RESULT(void) esc_init(uint16_t flags)
 	// TODO : gather termcaps but without termcap/terminfo
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
 
-	ESC_TRY(void, esc_settermflags(flags));
+	if (opt_flags.set_flags) {
+		ESC_TRY(void, esc_settermflags(opt_flags.flags));
+	}
 	return ESC_RESNOERR(void);
 }
 

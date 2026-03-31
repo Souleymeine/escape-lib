@@ -5,7 +5,7 @@
 
 int main()
 {
-	(void)esc_init(ESC_TERM_ALTBUF | ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR);
+	(void)esc_init(ESC_INIT_FLAGS(ESC_TERM_ALTBUF | ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR));
 	(void)esc_initscr(ESC_STRBUF_IMPL_CIRCULAR_HEAP(1024), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
 
 	(void)esc_setcp(U'é', 5, 5);

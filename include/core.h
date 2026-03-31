@@ -88,11 +88,13 @@ enum esc_stdstream {
 
 
 struct esc_init_opts {
-	bool set_termflags;
-	uint16_t termflags;
+	bool set_flags;
+	uint16_t flags;
 };
+#define ESC_INIT_FLAGS(fl) (struct esc_init_opts){ .set_flags = true, .flags = fl }
+#define ESC_INIT_NOFLAGS   (struct esc_init_opts){ .set_flags = false }
 
-ESC_RESULT(void) esc_init(uint16_t flags);
+ESC_RESULT(void) esc_init(struct esc_init_opts init_opt);
 /* Resets the terminal with none of the flags present in `enum termflags`. */
 void esc_cleanup();
 

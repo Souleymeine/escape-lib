@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[])
 {
-	(void)esc_init(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF);
+	(void)esc_init(ESC_INIT_FLAGS(ESC_TERM_NO_ECHO | ESC_TERM_HIDE_CURSOR | ESC_TERM_ALTBUF));
 	(void)esc_initscr(ESC_STRBUF_IMPL_GROWABLE(1024, 0.5f), false, ESC_CLR_CODE(ESC_CLRCODE_DEF), ESC_CLR_CODE(ESC_CLRCODE_DEF));
 	
 	const char32_t cp = (argc == 1) ? U'é' : esc_mbtocp(ESC_UTF8(argv[1])).val;
