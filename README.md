@@ -141,7 +141,7 @@ The only things required to understand this library's source code are the follow
 - [ ] Account for other terminal emulators on Windows other than *conhost* and *Terminal*
 - [ ] Support WASM for [Xterm.js](https://xtermjs.org/)
 - [ ] Support OpenGL/Vulkan surfaces
-- [ ] Parallel screen rendering?
+- [ ] Provide all shorthand form macros (#ifdef ESC_SHORTHAND)
 - [ ] 24bit color driver for Linux/BSD's tty?
 - [ ] Try compiling and running with [Fil-C](https://fil-c.org/)
 - [ ] Doom in the linux kernel's tty, with mouse support!

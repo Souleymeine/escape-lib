@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stddef.h>
 #include <uchar.h>
+#include <stdint.h>
 
 // What you're looking for is probably below that big block
 
@@ -25,8 +25,6 @@
 #define ___ESC_IS_VOID_void ___ESC_PROBE(~)
 #define _ESC_IF_NOT_VOID(T) ___ESC_IF(___ESC_ZERO(___ESC_IS_VOID(T)))
 // Thanks to holyblackcat on Discord!!
-#define ESC_RESULT_TYPENAME(T) _ESC_CAT(escres_,ESC_TYPEID(T))
-#define ESC_RESULT_TYPENAME_PTR(T) _ESC_CAT(escres_,ESC_TYPEID_PTR(T))
 #define ESC_TYPEID_PTR(name) _ESC_CAT(ESC_TYPEID(name),_ptr)
 #define ESC_TYPEID(name) ___ESC_TYPEID_(___ESC_TYPEID_(___ESC_TYPEID_(___ESC_TYPEID_(name)))) // types up to 4 words such as unsigned long long int
 #define ___ESC_TYPEID_(name_) ___ESC_DETAIL_TYPEID_SELECT(___ESC_DETAIL_TYPEID_ANALYZE(name_), name_, ___ESC_DETAIL_TYPEID_ELABORATED, ___ESC_DETAIL_TYPEID_NOT_ELABORATED, x)
@@ -67,19 +65,21 @@
 #define _ESC_NODISCARD(reason)
 #endif
 
+#define ESC_RESULT_TYPENAME(T) _ESC_CAT(escres_,ESC_TYPEID(T))
+#define ESC_RESULT_TYPENAME_PTR(T) _ESC_CAT(escres_,ESC_TYPEID_PTR(T))
+
 #define _ESC_RESULT_DECL(T) struct _ESC_NODISCARD("Error ignored") \
-ESC_RESULT_TYPENAME(T) {                      \
-	const enum escerror err;                  \
-	_ESC_IF_NOT_VOID(T)(const T val;)()       \
+ESC_RESULT_TYPENAME(T) {                       \
+	const enum esc_error err;                  \
+	_ESC_IF_NOT_VOID(T)(const T val;)()        \
 }
 #define _ESC_RESULT_PTR_DECL(T) struct _ESC_NODISCARD("Pointer error ignored") \
-ESC_RESULT_TYPENAME_PTR(T) {                  \
-	const enum escerror err;                  \
-	T* val;                                   \
+ESC_RESULT_TYPENAME_PTR(T) {                   \
+	const enum esc_error err;                  \
+	T* val;                                    \
 }
 
-#define ESC_OK(res) (!res.err)
-enum escerror : unsigned {
+enum esc_error {
 // global
 	ESC_ERR_OOM = 1,
 // core
@@ -87,9 +87,10 @@ enum escerror : unsigned {
 	ESC_ERR_TERMWRITE_TRUNCATED,
 // io
 // rndr
-	ESC_ERR_INVALID_UTF8_CU,
-	ESC_ERR_NO_INVALID_UTF8_CU,
-	ESC_ERR_INVALID_UNICODE_CODEPOINT,
+	ESC_ERR_UNICODE_CP_INVALID,
+	ESC_ERR_UTF8_CU_INVALID,
+	ESC_ERR_UTF8_STR_LONGER_THAN_ONE_CP,
+	ESC_ERR_UTF8_STR_INVALID,
 	ESC_ERR_CELL_X_OOB,
 	ESC_ERR_CELL_Y_OOB,
 	ESC_ERR_CELL_XY_OOB,
@@ -98,6 +99,12 @@ enum escerror : unsigned {
 // img
 // 3d
 };
+
+
+#define _ESC_OPT_DECL(T) struct _ESC_CAT(escopt_,ESC_TYPEID(T)) { \
+	bool exists;                                                  \
+	T val;                                                        \
+}
 
 /**
  * List of all the result type declarations for stdc types used in the library
@@ -113,6 +120,33 @@ _ESC_RESULT_DECL(size_t);
 _ESC_RESULT_DECL(char8_t);
 _ESC_RESULT_DECL(char32_t);
 
+// Same for optionals
+_ESC_OPT_DECL(size_t);
+_ESC_OPT_DECL(char8_t);
+_ESC_OPT_DECL(char32_t);
+_ESC_OPT_DECL(uint8_t);
+_ESC_OPT_DECL(uint16_t);
+_ESC_OPT_DECL(uint32_t);
+
+#ifdef ESC_SHORTHAND
+#define RESULT_TYPENAME     ESC_RESULT_TYPENAME
+#define RESULT_TYPENAME_PTR ESC_RESULT_TYPENAME_PTR
+#define CATCH               ESC_CATCH
+#define RESULT              ESC_RESULT
+#define RESULT_PTR          ESC_RESULT_PTR
+#define RESVAL              ESC_RESVAL
+#define RESERR              ESC_RESERR
+#define RESNOERR            ESC_RESNOERR
+#define RESPTRVAL           ESC_RESPTRVAL
+#define RESPTRERR           ESC_RESPTRERR
+#define RESPTRERRNOERR      ESC_RESPTRNOERR
+#define OPTSOME             ESC_OPTSOME
+#define OPTNONE             ESC_OPTNONE
+#define TRY                 ESC_TRY
+#endif
+
+#define ESC_CATCH(res, e, handling) do { const enum esc_error e = res.err; if (e) {handling;} } while(false)
+
 #define ESC_RESULT(T)     struct ESC_RESULT_TYPENAME(T)
 #define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T)
 
@@ -125,16 +159,20 @@ _ESC_RESULT_DECL(char32_t);
 #define ESC_RESPTRERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
 #define ESC_RESPTRNOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
 
+#define ESC_OPTSOME(T, v) (ESC_OPT(T)) {.exists = true, .val = v}
+#define ESC_OPTNONE(T)    (ESC_OPT(T)) {.exists = false}
+#define ESC_OPT(T)        struct _ESC_CAT(escopt_,ESC_TYPEID(T))
+
 #if __STDC_VERSION__ >= 202311L
-#define ESC_TRY(T, res)                            \
-	do {                                           \
-		const auto r = res;                        \
-		if (r.err) return ESC_RESERR(T, r.err);    \
+#define ESC_TRY(T, res)                              \
+	do {                                             \
+		const auto r = res;                          \
+		if (r.err) return ESC_RESERR(T, r.err);      \
 	} while (false)
-#define ESC_TRY_PTR(T, res)                        \
-	do {                                           \
-		const auto r = res;                        \
-		if (r.err) return ESC_RESPTRERR(T, r.err); \
+#define ESC_TRY_PTR(T, res)                          \
+	do {                                             \
+		const auto r = res;                          \
+		if (r.err) return ESC_RESPTRERR(T, r.err);   \
 	} while (false)
 #else
 #define ESC_TRY(T, res)                              \

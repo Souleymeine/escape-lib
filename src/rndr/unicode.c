@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdbit.h>
 #include <string.h>
 #include <uchar.h>
@@ -49,23 +48,16 @@ constexpr uint8_t USED_MASK = 0b00111111;
 ESC_RESULT(char32_t) esc_mbtocp(const char8_t* str)
 {
 	// Try validate string
-	const ESC_RESULT(enum esc_cu) first_cu = esc_getcu(str[0]);
-	ESC_TRY(char32_t, first_cu);
-	const size_t byte_len = strlen((char*)str);
-	if (first_cu.val != byte_len) {
-		return (first_cu.val > byte_len)
-			? ESC_RESERR(char32_t, ESC_ERR_UTF8_STR_LONGER_THAN_ONE_CP)
-			: ESC_RESERR(char32_t, ESC_ERR_UTF8_STR_INVALID);
-	}
-
-	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
 	const ESC_RESULT(enum esc_cu) cu_type = esc_getcu(str[0]);
 	ESC_TRY(char32_t, cu_type);
+	const size_t byte_len = strlen((char*)str);
+	if      (cu_type.val >  byte_len) return ESC_RESERR(char32_t, ESC_ERR_UTF8_STR_LONGER_THAN_ONE_CP);
+	else if (cu_type.val != byte_len) return ESC_RESERR(char32_t, ESC_ERR_UTF8_STR_INVALID);
 
+	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
 	if (cu_type.val == ESC_CU_ASCII) {
 		return ESC_RESVAL(char32_t, str[0]);
 	}
-
 	char32_t c = str[0] & 0b00000111;
 	for (size_t i = 1; i < cu_type.val; ++i) {
 		c <<= 6;

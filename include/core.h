@@ -35,8 +35,8 @@ struct esc_seqel {
 #define ESC_U8_MAX_DIGITS  3
 
 // Useful to allocate enough memory for a sequence given the amount of parameters
-#define ESC_U8_WORST_PARAMSEQ_LEN(n)  (2 + n * ESC_U8_MAX_DIGITS  + n) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
-#define ESC_U16_WORST_PARAMSEQ_LEN(n) (2 + n * ESC_U16_MAX_DIGITS + n) // same here
+#define ESC_U8_WORST_SEQLEN(param_count)  (2 + param_count * ESC_U8_MAX_DIGITS  + param_count) // = 2 + n * U8_MAX_DIGITS + (n - 1) + 1 (CSI + params + semi-colons + end)
+#define ESC_U16_WORST_SEQLEN(param_count) (2 + param_count * ESC_U16_MAX_DIGITS + param_count) // same here
 
 #define ESC_SEQEL_MAX_PARAM 13 // RGB is the biggest known for now
 
@@ -47,13 +47,25 @@ struct esc_seqel {
 #define ESC_SEQU16(n)    (struct esc_seqel){.tag = ESC_FMT_U16, .uint16 = n}
 
 #define ESC_ARRARG(T, ...) (T[])__VA_ARGS__, sizeof((T[])__VA_ARGS__)/sizeof(T)
-#define ESC_STRLARG(s) s, sizeof(s) - 1
+#define ESC_STRLARG(s)     s, sizeof(s) - 1
+
+#ifdef ESC_SHORTHAND
+#define U16_MAX_DIGITS   ESC_U16_MAX_DIGITS
+#define U8_MAX_DIGITS    ESC_U8_MAX_DIGITS
+#define U8_WORST_SEQLEN  ESC_U8_WORST_SEQLEN
+#define U16_WORST_SEQLEN ESC_U16_WORST_SEQLEN
+#define ARRARG  ESC_ARRARG
+#define STRLARG ESC_STRLARG
+#define SEQSTR  ESC_SEQSTR
+#define SEQSTRL ESC_SEQSTRL
+#define SEQCHR  ESC_SEQCHR
+#define SEQU8   ESC_SEQU8
+#define SEQU16  ESC_SEQU16
+#endif
 
 /** Returns the number of digits in base 10 of 16 bit unsigned int x */
 uint8_t esc_digits(uint16_t n);
-
 size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n);
-
 /**
  * Fills a sequence of fromat CSI p1;p2;...end with pn being an unsigned 8 bit integer (useful for style/color codes)
  * And returns the length of said sequence
@@ -75,9 +87,9 @@ struct esc_termsize {
 struct esc_termsize esc_gettermsize();
 
 enum esc_termflags {
-	ESC_TERM_ALTBUF      = 0x1,
-	ESC_TERM_HIDE_CURSOR = 0x2,
-	ESC_TERM_NO_ECHO     = 0x4,
+	ESC_TERM_ALTBUF   = 0x1,
+	ESC_TERM_NOCURSOR = 0x2,
+	ESC_TERM_NOECHO   = 0x4,
 };
 
 enum esc_stdstream {
@@ -86,15 +98,7 @@ enum esc_stdstream {
 	ESC_STDERR = 2,
 };
 
-
-struct esc_init_opts {
-	bool set_flags;
-	uint16_t flags;
-};
-#define ESC_INIT_FLAGS(fl) (struct esc_init_opts){ .set_flags = true, .flags = fl }
-#define ESC_INIT_NOFLAGS   (struct esc_init_opts){ .set_flags = false }
-
-ESC_RESULT(void) esc_init(struct esc_init_opts init_opt);
+ESC_RESULT(void) esc_init(ESC_OPT(uint16_t) flags);
 /* Resets the terminal with none of the flags present in `enum termflags`. */
 void esc_cleanup();
 

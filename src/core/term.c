@@ -23,7 +23,7 @@ static UINT   g_og_output_cp;
 static uint16_t g_flags = 0;
 static uint16_t g_og_flags = 0;
 
-ESC_RESULT(void) esc_init(struct esc_init_opts opt_flags)
+ESC_RESULT(void) esc_init(ESC_OPT(uint16_t) flags)
 {
 #if __unix__
 	tcgetattr(STDIN_FILENO, &g_termattr);
@@ -44,8 +44,8 @@ ESC_RESULT(void) esc_init(struct esc_init_opts opt_flags)
 	// TODO : gather termcaps but without termcap/terminfo
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
 
-	if (opt_flags.set_flags) {
-		ESC_TRY(void, esc_settermflags(opt_flags.flags));
+	if (flags.exists) {
+		ESC_TRY(void, esc_settermflags(flags.val));
 	}
 	return ESC_RESNOERR(void);
 }
@@ -54,7 +54,7 @@ ESC_RESULT(void) esc_init(struct esc_init_opts opt_flags)
 ESC_RESULT(void) esc_settermflags(uint16_t flags)
 {
 #if __unix__
-	g_termattr.c_lflag = (flags & ESC_TERM_NO_ECHO)
+	g_termattr.c_lflag = (flags & ESC_TERM_NOECHO)
 		? g_termattr.c_lflag & (~ECHO)
 		: g_termattr.c_lflag | ECHO;
 	tcsetattr(STDIN_FILENO, 0, &g_termattr);
@@ -70,8 +70,8 @@ ESC_RESULT(void) esc_settermflags(uint16_t flags)
 
 	char8_t seq[14];
 	const size_t len = esc_seqcat(seq, (struct esc_seqel[]) {
-		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?1049"), ESC_SEQCHR(flags & ESC_TERM_ALTBUF ?      'h' : 'l'),
-		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?25"),   ESC_SEQCHR(flags & ESC_TERM_HIDE_CURSOR ? 'l' : 'h')
+		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?1049"), ESC_SEQCHR(flags & ESC_TERM_ALTBUF ?   'h' : 'l'),
+		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?25"),   ESC_SEQCHR(flags & ESC_TERM_NOCURSOR ? 'l' : 'h')
 	}, 6);
 
 	ESC_TRY(void, esc_termwrite(ESC_STDOUT, seq, len));

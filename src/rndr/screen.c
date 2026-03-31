@@ -7,6 +7,7 @@
 #include <memoryapi.h>
 #endif
 
+#define ESC_SHORTHAND
 #include "../../include/core.h"
 #include "../../include/rndr.h"
 
@@ -60,10 +61,10 @@ static bool g_use_vgrid = false;
 #endif
 
 [[nodiscard("What are you doing?")]]
-static ESC_RESULT_PTR(void) heapalloc(size_t pagesize)
+static RESULT_PTR(void) heapalloc(size_t pagesize)
 {
 #if STD_MALLOC
-	return ESC_RESPTRVAL(void, malloc(pagesize));
+	return RESPTRVAL(void, malloc(pagesize));
 	// TODO : handle all relevant values of errno
 #else
 #if __unix__
@@ -74,9 +75,9 @@ static ESC_RESULT_PTR(void) heapalloc(size_t pagesize)
 	LPVOID page = VirtualAlloc(nullptr, pagesize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	if (!page) {
 #endif
-		return ESC_RESPTRERR(void, ESC_ERR_OOM);
+		return RESPTRERR(void, ESC_ERR_OOM);
 	}
-	return ESC_RESPTRVAL(void, page);
+	return RESPTRVAL(void, page);
 #endif /* STD_MALLOC */
 }
 
@@ -95,13 +96,13 @@ static void heapfree(void* ptr, size_t len [[maybe_unused]])
 
 #define PADDING_BETWEEN(prev_byte_count, next_T) (prev_byte_count % sizeof(next_T))
 
-static ESC_RESULT(void) strbuf_init(const struct esc_strbuf_impl* strbuf_impl, void* page, size_t* ofst)
+static RESULT(void) strbuf_init(const struct esc_strbuf_impl* strbuf_impl, void* page, size_t* ofst)
 {
 	g_strbuf.len = 0;
 	g_strbuf.growable = false;
 
 	switch (strbuf_impl->buf_tag) {
-	case ESC_STRBUF_CIRCULAR_STACK:
+	case ESC_STRBUF_RING_STACK:
 		g_strbuf.ptr      = strbuf_impl->circular_stack.buf;
 		g_strbuf.capacity = strbuf_impl->circular_stack.size;
 		break;
@@ -113,8 +114,8 @@ static ESC_RESULT(void) strbuf_init(const struct esc_strbuf_impl* strbuf_impl, v
 		} else {
 			assert(strbuf_impl->heap.growth_rate > 0);
 			
-			const ESC_RESULT_PTR(void) strbuf_page = heapalloc(strbuf_impl->heap.size);
-			ESC_TRY(void, strbuf_page);
+			const RESULT_PTR(void) strbuf_page = heapalloc(strbuf_impl->heap.size);
+			TRY(void, strbuf_page);
 
 			g_strbuf.growable    = true;
 			g_strbuf.ptr         = strbuf_page.val;
@@ -124,7 +125,7 @@ static ESC_RESULT(void) strbuf_init(const struct esc_strbuf_impl* strbuf_impl, v
 		break;
 	}
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 /** Initializes the fields of the given grid and offsets arena_cursor */
@@ -145,7 +146,7 @@ static void grid_init(struct grid* g, void* page, size_t* ofst,
 	*ofst += ((uintptr_t)g->fg_clrs + clrvals_bytesize) - ((uintptr_t)page + *ofst); // last - first
 }
 
-ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr)
+RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual_grid, struct esc_clr bgclr, struct esc_clr fgclr)
 {
 	g_use_vgrid = virtual_grid;
 
@@ -170,8 +171,8 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 
 	/* --- Allocate and set --- */
 
-	const ESC_RESULT_PTR(void) page = heapalloc(arena_heapsize);
-	ESC_TRY(void, page);
+	const RESULT_PTR(void) page = heapalloc(arena_heapsize);
+	TRY(void, page);
 	g_rndr_arena = (struct rndr_arena) {
 		.bytes    = page.val,
 		.heapsize = arena_heapsize,
@@ -186,10 +187,10 @@ ESC_RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool vir
 		assert(arena_ofst == 2 * grid_bytesize + PADDING_BETWEEN(grid_bytesize, union esc_clrval));
 	}
 
-	ESC_TRY(void, strbuf_init(strbuf_impl, page.val, &arena_ofst));
+	TRY(void, strbuf_init(strbuf_impl, page.val, &arena_ofst));
 	assert(arena_ofst == arena_heapsize);
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 void esc_deinitscr()
@@ -203,14 +204,14 @@ void esc_deinitscr()
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * ------------------------ */
-static ESC_RESULT(void) strbuf_grow()
+static RESULT(void) strbuf_grow()
 {
 	assert(g_strbuf.growable);
 
 	const size_t new_capacity = g_strbuf.capacity * g_strbuf.growth_rate;
 
-	const ESC_RESULT_PTR(void) new_page = heapalloc(new_capacity);
-	ESC_TRY(void, new_page);
+	const RESULT_PTR(void) new_page = heapalloc(new_capacity);
+	TRY(void, new_page);
 
 	memcpy(new_page.val, g_strbuf.ptr, g_strbuf.len);
 	heapfree(g_strbuf.ptr, g_strbuf.capacity);
@@ -218,17 +219,17 @@ static ESC_RESULT(void) strbuf_grow()
 	g_strbuf.ptr      = new_page.val;
 	g_strbuf.capacity = new_capacity;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 
-static ESC_RESULT(void) strbuf_flush()
+static RESULT(void) strbuf_flush()
 {
 	if (g_strbuf.len > 0) {
-		ESC_TRY(void, esc_termwrite(ESC_STDOUT, g_strbuf.ptr, g_strbuf.len));
+		TRY(void, esc_termwrite(ESC_STDOUT, g_strbuf.ptr, g_strbuf.len));
 		g_strbuf.len = 0;
 	}
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 /**
@@ -236,19 +237,19 @@ static ESC_RESULT(void) strbuf_flush()
  * `len` may be bigger than `g_strbuf.capacity`.
  * Asserts `len` is non-null
  */
-static ESC_RESULT(void) strbuf_add(const char8_t* str, size_t len)
+static RESULT(void) strbuf_add(const char8_t* str, size_t len)
 {
 	assert(len > 0);
 
 	bool will_overflow = g_strbuf.len + len > g_strbuf.capacity;
 
 	if (g_strbuf.growable && will_overflow) {
-		ESC_TRY(void, strbuf_grow());
+		TRY(void, strbuf_grow());
 	} else if (!g_strbuf.growable) {
 		const size_t capacity_left = g_strbuf.capacity - g_strbuf.len;
 
 		if (capacity_left == 0) {
-			ESC_TRY(void, strbuf_flush());
+			TRY(void, strbuf_flush());
 			will_overflow = g_strbuf.len + len > g_strbuf.capacity; // update since len is now 0
 		}
 		if (will_overflow) {
@@ -260,20 +261,20 @@ static ESC_RESULT(void) strbuf_add(const char8_t* str, size_t len)
 
 	memcpy(g_strbuf.ptr + g_strbuf.len, str, len);
 	g_strbuf.len += len;
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 // Code alignment final boss
-static ESC_RESULT(void) strbuf_addclr(size_t idx, bool isbg)
+static RESULT(void) strbuf_addclr(size_t idx, bool isbg)
 {
 	size_t len;
-	char8_t seq[4 + ESC_U8_WORST_PARAMSEQ_LEN(3)]; // biggest possible bufsize of all the 3 color formats (rgb)
+	char8_t seq[4 + U8_WORST_SEQLEN(3)]; // biggest possible bufsize of all the 3 color formats (rgb)
 	const union esc_clrval clr = isbg ? g_pgrid.bg_clrs[idx]              : g_pgrid.fg_clrs[idx];
 	const enum esc_clrtag tag  = isbg ? g_pgrid.chars_tags[idx].bgclr_tag : g_pgrid.chars_tags[idx].fgclr_tag;
 	switch (tag) {
-	case ESC_CLRTAG_CODE: len = esc_u8seq(seq, ESC_ARRARG(uint8_t, {clr.code}), 'm'); break;
-	case ESC_CLRTAG_RGB:  len = esc_u8seq(seq, ESC_ARRARG(uint8_t, { isbg ? 48 : 38, 2, clr.rgb.r, clr.rgb.g, clr.rgb.b }), 'm'); break;
-	case ESC_CLRTAG_ID:   len = esc_u8seq(seq, ESC_ARRARG(uint8_t, { isbg ? 48 : 38, 5, clr.id }), 'm'); break;
+	case ESC_CLRTAG_CODE: len = esc_u8seq(seq, ARRARG(uint8_t, {clr.code}), 'm'); break;
+	case ESC_CLRTAG_RGB:  len = esc_u8seq(seq, ARRARG(uint8_t, { isbg ? 48 : 38, 2, clr.rgb.r, clr.rgb.g, clr.rgb.b }), 'm'); break;
+	case ESC_CLRTAG_ID:   len = esc_u8seq(seq, ARRARG(uint8_t, { isbg ? 48 : 38, 5, clr.id }), 'm'); break;
 	}
 
 	return strbuf_add(seq, len);
@@ -283,15 +284,15 @@ static ESC_RESULT(void) strbuf_addclr(size_t idx, bool isbg)
 /* ------------------------ *
  * --- LIBRARY HOT SPOT --- *
  * --------------------- -- */
-ESC_RESULT(void) esc_refresh(bool clear)
+RESULT(void) esc_refresh(bool clear)
 {
 	const size_t pgrid_cell_cnt = g_pgrid.size.rows * g_pgrid.size.cols;
 
 	if (clear && g_refreshed && !g_use_vgrid) { // Won't clear if the screen has never been refreshed
 		for (size_t i = 0; i < pgrid_cell_cnt; ++i) {
-			ESC_TRY(void, strbuf_add(ESC_STRLARG(u8" ")));
+			TRY(void, strbuf_add(STRLARG(u8" ")));
 		}
-		ESC_TRY(void, strbuf_add(ESC_STRLARG(CSI u8"H")));
+		TRY(void, strbuf_add(STRLARG(CSI u8"H")));
 	}
 
 	struct esc_coord last_coord = {};
@@ -300,30 +301,30 @@ ESC_RESULT(void) esc_refresh(bool clear)
 			continue;
 		}
 
-		ESC_TRY(void, strbuf_addclr(i, true));
-		ESC_TRY(void, strbuf_addclr(i, false));
+		TRY(void, strbuf_addclr(i, true));
+		TRY(void, strbuf_addclr(i, false));
 
 		// No need to bounds check since we use the grid's own size, not user data
 		const struct esc_coord coord = esc_idxtocoord(i).val;
 
 		if (last_coord.x == g_pgrid.size.cols - 1 && coord.x == 0) {
-			ESC_TRY(void, strbuf_add(ESC_STRLARG(u8"\n")));
+			TRY(void, strbuf_add(STRLARG(u8"\n")));
 		} else if (coord.x != last_coord.x + 1 || coord.y != last_coord.y) {
-			char8_t mvseq[ESC_U16_WORST_PARAMSEQ_LEN(2)];
-			const size_t mvseq_len = esc_u16seq(mvseq, ESC_ARRARG(uint16_t, {coord.y, coord.x}), 'H');
-			ESC_TRY(void, strbuf_add(mvseq, mvseq_len));
+			char8_t mvseq[U16_WORST_SEQLEN(2)];
+			const size_t mvseq_len = esc_u16seq(mvseq, ARRARG(uint16_t, {coord.y, coord.x}), 'H');
+			TRY(void, strbuf_add(mvseq, mvseq_len));
 		}
 
 		const bool has_clr = (g_pgrid.chars_tags[i].bgclr_tag || g_pgrid.chars_tags[i].fgclr_tag);
 		if (!g_pgrid.chars_tags[i].c && has_clr) {
-			ESC_TRY(void, strbuf_add(ESC_STRLARG(u8" ")));
+			TRY(void, strbuf_add(STRLARG(u8" ")));
 		} else {
-			char8_t mb[ESC_MAX_UTF8_CU];
+			char8_t mb[MAX_UTF8_CU];
 			size_t mb_len = esc_cptomb(mb, g_pgrid.chars_tags[i].c).val;
-			ESC_TRY(void, strbuf_add(mb, mb_len));
+			TRY(void, strbuf_add(mb, mb_len));
 		}
 		if (has_clr) {
-			ESC_TRY(void, strbuf_add(ESC_STRLARG(CSI u8"m")));
+			TRY(void, strbuf_add(STRLARG(CSI u8"m")));
 		}
 		last_coord = coord;
 	}
@@ -336,52 +337,52 @@ ESC_RESULT(void) esc_refresh(bool clear)
 }
 
 
-static ESC_RESULT(void) grid_boundscheck(uint16_t x, uint16_t y)
+static RESULT(void) grid_boundscheck(uint16_t x, uint16_t y)
 {
 	if (x > g_pgrid.size.cols) {
 		if (y > g_pgrid.size.rows) goto xy_oob;
-		return ESC_RESERR(void, ESC_ERR_CELL_X_OOB);
+		return RESERR(void, ESC_ERR_CELL_X_OOB);
 	} else if (y > g_pgrid.size.rows) {
 		if (x > g_pgrid.size.cols) goto xy_oob;
-		return ESC_RESERR(void, ESC_ERR_CELL_Y_OOB);
+		return RESERR(void, ESC_ERR_CELL_Y_OOB);
 	}
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 xy_oob: // goto ftw! (-- https://godbolt.org/z/s8j71cn45 -- , smaller code)
-	return ESC_RESERR(void, ESC_ERR_CELL_XY_OOB);
+	return RESERR(void, ESC_ERR_CELL_XY_OOB);
 }
 
-ESC_RESULT(struct esc_coord) esc_idxtocoord(size_t i)
+RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 {
-	if (i > g_pgrid.size.cols * g_pgrid.size.rows) ESC_RESERR(struct esc_coord, ESC_ERR_CELL_INDEX_OOB);
+	if (i > g_pgrid.size.cols * g_pgrid.size.rows) RESERR(struct esc_coord, ESC_ERR_CELL_INDEX_OOB);
 
 	const uint16_t y = i / g_pgrid.size.cols;
 	const uint16_t x = i - y * g_pgrid.size.cols;
-	return ESC_RESVAL(struct esc_coord, (struct esc_coord) {
+	return RESVAL(struct esc_coord, (struct esc_coord) {
 		.y = y,
 		.x = x,
 	});
 }
 
-ESC_RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
+RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
 {
-	ESC_TRY(size_t, grid_boundscheck(x, y));
-	return ESC_RESVAL(size_t, y * g_pgrid.size.cols + x);
+	TRY(size_t, grid_boundscheck(x, y));
+	return RESVAL(size_t, y * g_pgrid.size.cols + x);
 }
 
-ESC_RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)
+RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)
 {
-	ESC_TRY(void, grid_boundscheck(x, y));
+	TRY(void, grid_boundscheck(x, y));
 	const size_t idx = esc_coordtoidx(x, y).val;
 
 	g_pgrid.chars_tags[idx].visible = true;
 	g_pgrid.chars_tags[idx].c       = c;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
-ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y)
+RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 {
-	ESC_TRY(void, grid_boundscheck(x, y));
+	TRY(void, grid_boundscheck(x, y));
 	const size_t idx = esc_coordtoidx(x, y).val;
 
 	g_pgrid.chars_tags[idx].visible   = true;
@@ -389,11 +390,11 @@ ESC_RESULT(void) esc_setbgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 
 	g_pgrid.bg_clrs[idx] = clr.val;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
-ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y)
+RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 {
-	ESC_TRY(void, grid_boundscheck(x, y));
+	TRY(void, grid_boundscheck(x, y));
 	const size_t idx = esc_coordtoidx(x, y).val;
 
 	g_pgrid.chars_tags[idx].visible   = true;
@@ -401,11 +402,11 @@ ESC_RESULT(void) esc_setfgclr(struct esc_clr clr, uint16_t x, uint16_t y)
 
 	g_pgrid.fg_clrs[idx] = clr.val;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
-ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y)
+RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint16_t x, uint16_t y)
 {
-	ESC_TRY(void, grid_boundscheck(x, y));
+	TRY(void, grid_boundscheck(x, y));
 	const size_t idx = esc_coordtoidx(x, y).val;
 
 	g_pgrid.chars_tags[idx].visible   = true;
@@ -415,14 +416,14 @@ ESC_RESULT(void) esc_setclrpair(struct esc_clr bgclr, struct esc_clr fgclr, uint
 	g_pgrid.bg_clrs[idx] = bgclr.val;
 	g_pgrid.fg_clrs[idx] = fgclr.val;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
-ESC_RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y)
+RESULT(void) esc_setvis(bool visible, uint16_t x, uint16_t y)
 {
-	ESC_TRY(void, grid_boundscheck(x, y));
+	TRY(void, grid_boundscheck(x, y));
 	const size_t idx = esc_coordtoidx(x, y).val;
 	g_pgrid.chars_tags[idx].visible = visible;
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
