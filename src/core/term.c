@@ -5,6 +5,7 @@
 #include <unistd.h>
 #endif
 
+#define ESC_SHORTHAND
 #include "../../include/core.h"
 
 
@@ -23,7 +24,7 @@ static UINT   g_og_output_cp;
 static uint16_t g_flags = 0;
 static uint16_t g_og_flags = 0;
 
-ESC_RESULT(void) esc_init(ESC_OPT(uint16_t) flags)
+RESULT(void) esc_init(OPT(uint16_t) flags)
 {
 #if __unix__
 	tcgetattr(STDIN_FILENO, &g_termattr);
@@ -45,13 +46,13 @@ ESC_RESULT(void) esc_init(ESC_OPT(uint16_t) flags)
 	// Read this : https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net
 
 	if (flags.exists) {
-		ESC_TRY(void, esc_settermflags(flags.val));
+		TRY(void, esc_settermflags(flags.val));
 	}
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 // TODO : set only flags that differ if flags and g_flags are not equal
-ESC_RESULT(void) esc_settermflags(uint16_t flags)
+RESULT(void) esc_settermflags(uint16_t flags)
 {
 #if __unix__
 	g_termattr.c_lflag = (flags & ESC_TERM_NOECHO)
@@ -70,15 +71,15 @@ ESC_RESULT(void) esc_settermflags(uint16_t flags)
 
 	char8_t seq[14];
 	const size_t len = esc_seqcat(seq, (struct esc_seqel[]) {
-		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?1049"), ESC_SEQCHR(flags & ESC_TERM_ALTBUF ?   'h' : 'l'),
-		ESC_SEQSTRL(CSI), ESC_SEQSTRL("?25"),   ESC_SEQCHR(flags & ESC_TERM_NOCURSOR ? 'l' : 'h')
+		SEQSTRL(CSI), SEQSTRL("?1049"), SEQCHR(flags & ESC_TERM_ALTBUF ?   'h' : 'l'),
+		SEQSTRL(CSI), SEQSTRL("?25"),   SEQCHR(flags & ESC_TERM_NOCURSOR ? 'l' : 'h')
 	}, 6);
 
-	ESC_TRY(void, esc_termwrite(ESC_STDOUT, seq, len));
+	TRY(void, esc_termwrite(ESC_STDOUT, seq, len));
 
 	g_flags = flags;
 
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 uint16_t esc_gettermflags() { return g_flags; }
@@ -89,14 +90,14 @@ HANDLE esc_getstdin_h()   { return g_stdin_h; }
 HANDLE esc_getstderr_h()  { return g_stderr_h; }
 #endif
 
-ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_t len)
+RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_t len)
 {
 #if __unix__
 	const ssize_t bytes_written = write(stream, buf, len); // stream directly maps to POSIX fd
 	if (bytes_written == -1) {
-		return ESC_RESERR(void, ESC_ERR_TERMWRITE_FAILED);
+		return RESERR(void, ESC_ERR_TERMWRITE_FAILED);
 	} else if (bytes_written != (ssize_t)len) {
-		return ESC_RESERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
+		return RESERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #elif _WIN32
 	UINT h;
@@ -107,12 +108,12 @@ ESC_RESULT(void) esc_termwrite(enum esc_stdstream stream, const void* buf, size_
 	}
 	DWORD bytes_writtern;
 	if (!WriteConsole(h, buf, &bytes_written, nullptr)) {
-		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_FAILED);
+		return RESERR(void, ESC_ERR_TERMWRITE_FAILED);
 	} else if (bytes_written != len) {
-		return ESC_RES_ERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
+		return RESERR(void, ESC_ERR_TERMWRITE_TRUNCATED);
 	}
 #endif
-	return ESC_RESNOERR(void);
+	return RESNOERR(void);
 }
 
 void esc_cleanup()

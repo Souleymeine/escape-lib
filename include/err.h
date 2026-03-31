@@ -140,6 +140,7 @@ _ESC_OPT_DECL(uint32_t);
 #define RESPTRVAL           ESC_RESPTRVAL
 #define RESPTRERR           ESC_RESPTRERR
 #define RESPTRERRNOERR      ESC_RESPTRNOERR
+#define OPT                 ESC_OPT
 #define OPTSOME             ESC_OPTSOME
 #define OPTNONE             ESC_OPTNONE
 #define TRY                 ESC_TRY

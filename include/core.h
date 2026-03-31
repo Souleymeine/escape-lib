@@ -50,6 +50,7 @@ struct esc_seqel {
 #define ESC_STRLARG(s)     s, sizeof(s) - 1
 
 #ifdef ESC_SHORTHAND
+#define SEQEL_MAX_PARAM  ESC_SEQEL_MAX_PARAM
 #define U16_MAX_DIGITS   ESC_U16_MAX_DIGITS
 #define U8_MAX_DIGITS    ESC_U8_MAX_DIGITS
 #define U8_WORST_SEQLEN  ESC_U8_WORST_SEQLEN

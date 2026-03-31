@@ -1,6 +1,7 @@
 #include <stdbit.h>
 #include <string.h>
 
+#define ESC_SHORTHAND
 #include "../../include/core.h"
 
 // From https://stackoverflow.com/questions/9721042/count-number-of-digits-which-method-is-most-efficient/9721401#9721401
@@ -40,14 +41,16 @@ size_t esc_seqcat(char8_t* dest, const struct esc_seqel* elements, size_t n)
 	return ofst;
 }
 
+// TODO : Remove duplication?
+
 size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
-	struct esc_seqel els[ESC_SEQEL_MAX_PARAM];
-	els[0] = ESC_SEQSTRL(CSI);
-	els[el_cnt - 1] = ESC_SEQCHR(end);
+	struct esc_seqel els[SEQEL_MAX_PARAM];
+	els[0]          = SEQSTRL(CSI);
+	els[el_cnt - 1] = SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
-		els[i] = (i & 1) ? ESC_SEQU8(params[(i - 1) / 2]) : ESC_SEQCHR(';');
+		els[i] = (i & 1) ? SEQU8(params[(i - 1) / 2]) : SEQCHR(';');
 	}
 	return esc_seqcat(dest, els, el_cnt);
 }
@@ -55,11 +58,11 @@ size_t esc_u8seq(char8_t* dest, const uint8_t* params, size_t n, char end)
 size_t esc_u16seq(char8_t* dest, const uint16_t* params, size_t n, char end)
 {
 	const size_t el_cnt = n * 2 + 1; // = 1 + n + (n - 1) + 1 (CSI + params + semi-colons + end)
-	struct esc_seqel els[ESC_SEQEL_MAX_PARAM];
-	els[0] = ESC_SEQSTRL(CSI);
-	els[el_cnt - 1] = ESC_SEQCHR(end);
+	struct esc_seqel els[SEQEL_MAX_PARAM];
+	els[0]          = SEQSTRL(CSI);
+	els[el_cnt - 1] = SEQCHR(end);
 	for (size_t i = 1; i < el_cnt - 1; i++) {
-		els[i] = (i & 1) ? ESC_SEQU16(params[(i - 1) / 2]) : ESC_SEQCHR(';');
+		els[i] = (i & 1) ? SEQU16(params[(i - 1) / 2]) : SEQCHR(';');
 	}
 	return esc_seqcat(dest, els, el_cnt);
 }
