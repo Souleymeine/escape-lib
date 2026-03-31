@@ -319,7 +319,7 @@ ESC_RESULT(void) esc_refresh(bool clear)
 			ESC_TRY(void, strbuf_add(ESC_STRLARG(u8" ")));
 		} else {
 			char8_t mb[ESC_MAX_UTF8_CU];
-			size_t mb_len = esc_cptomb(g_pgrid.chars_tags[i].c, mb).val;
+			size_t mb_len = esc_cptomb(mb, g_pgrid.chars_tags[i].c).val;
 			ESC_TRY(void, strbuf_add(mb, mb_len));
 		}
 		if (has_clr) {

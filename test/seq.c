@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
 	char32_t cp = (argc == 2) ? esc_mbtocp(ESC_UTF8(argv[1])).val : U'é';
 	char8_t utf8[4];
-	const ESC_RESULT(size_t) cu_count = esc_cptomb(cp, utf8);
+	const ESC_RESULT(size_t) cu_count = esc_cptomb(utf8, cp);
 	if (cu_count.err) {
 		fprintf(stderr, "Bad codepoint\n");
 	}

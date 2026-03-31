@@ -126,5 +126,5 @@ ESC_RESULT(size_t) esc_getinvcu(const char8_t* str, size_t len);
 ESC_RESULT(char32_t) esc_mbtocp(const char8_t* cp);
 /** Fills gphm with the codepoints found in c32. Returns the number of codepoints found.
  * gphm should have at least as many bytes as there are in c32. */
-ESC_RESULT(size_t) esc_cptomb(char32_t cp, char8_t* dest);
+ESC_RESULT(size_t) esc_cptomb(char8_t* dest, char32_t cp);
 
