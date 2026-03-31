@@ -25,7 +25,7 @@ ESC_RESULT(enum esc_cu) esc_getcu(char8_t c)
 			if (leading_ones == 1) {
 				return ESC_RESVAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			} else if (leading_ones <= 4) {
-				return ESC_RESVAL(enum esc_cu, (enum esc_cu)leading_ones);
+				return ESC_RESVAL(enum esc_cu, leading_ones);
 			}
 		}
 	}

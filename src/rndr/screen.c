@@ -357,7 +357,7 @@ RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 
 	const uint16_t y = i / g_pgrid.size.cols;
 	const uint16_t x = i - y * g_pgrid.size.cols;
-	return RESVAL(struct esc_coord, (struct esc_coord) {
+	return RESVAL(struct esc_coord, {
 		.y = y,
 		.x = x,
 	});

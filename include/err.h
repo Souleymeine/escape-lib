@@ -150,13 +150,13 @@ _ESC_OPT_DECL(uint32_t);
 #define ESC_RESULT(T)     struct ESC_RESULT_TYPENAME(T)
 #define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T)
 
-// Variadics to remove the necessity of parenthesis when using inline structs
-#define ESC_RESVAL(T, ...) (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
-#define ESC_RESERR(T, ...) (ESC_RESULT(T)) {.err = __VA_ARGS__}
+// Variadics to remove the necessity of parenthesis when using inline structs or array literals
+#define ESC_RESVAL(T, ...) (ESC_RESULT(T)) {.val = (T) __VA_ARGS__, .err = 0}
+#define ESC_RESERR(T, e)   (ESC_RESULT(T)) {.err = e}
 #define ESC_RESNOERR(T)    (ESC_RESULT(T)) {.err = 0}
 
 #define ESC_RESPTRVAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
-#define ESC_RESPTRERR(T, ...) (ESC_RESULT_PTR(T)) {.err = __VA_ARGS__}
+#define ESC_RESPTRERR(T, e)   (ESC_RESULT_PTR(T)) {.err = e}
 #define ESC_RESPTRNOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
 
 #define ESC_OPTSOME(T, v) (ESC_OPT(T)) {.exists = true, .val = v}
