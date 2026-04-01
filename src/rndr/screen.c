@@ -64,7 +64,7 @@ static bool g_use_vgrid = false;
 static RESULT_PTR(void) heapalloc(size_t pagesize)
 {
 #if STD_MALLOC
-	return RESPTRVAL(void, malloc(pagesize));
+	return RESPTROK(void, malloc(pagesize));
 	// TODO : handle all relevant values of errno
 #else
 #if __unix__
@@ -77,7 +77,7 @@ static RESULT_PTR(void) heapalloc(size_t pagesize)
 #endif
 		return RESPTRERR(void, ESC_ERR_OOM);
 	}
-	return RESPTRVAL(void, page);
+	return RESPTROK(void, page);
 #endif /* STD_MALLOC */
 }
 
@@ -358,7 +358,7 @@ RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 
 	const uint16_t y = i / g_pgrid.size.cols;
 	const uint16_t x = i - y * g_pgrid.size.cols;
-	return RESVAL(struct esc_coord, {
+	return RESOK(struct esc_coord, {
 		.y = y,
 		.x = x,
 	});
@@ -367,7 +367,7 @@ RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
 {
 	TRY(size_t, grid_boundscheck(x, y));
-	return RESVAL(size_t, y * g_pgrid.size.cols + x);
+	return RESOK(size_t, y * g_pgrid.size.cols + x);
 }
 
 RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)

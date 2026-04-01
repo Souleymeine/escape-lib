@@ -19,14 +19,14 @@ RESULT(enum esc_cu) esc_getcu(char8_t c)
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
 	if (stdc_bit_width(c) < 8) {
-		return RESVAL(enum esc_cu, ESC_CU_ASCII);
+		return RESOK(enum esc_cu, ESC_CU_ASCII);
 	} else {
 		const uint8_t leading_ones = stdc_leading_ones_uc(c);
 		if (stdc_first_leading_zero_uc(c) == leading_ones + 1) {
 			if (leading_ones == 1) {
-				return RESVAL(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
+				return RESOK(enum esc_cu, ESC_CU_CONTINUATION); // Continuation bytes don't represent a gphm of size 1 (an ASCII char)
 			} else if (leading_ones <= 4) {
-				return RESVAL(enum esc_cu, leading_ones);
+				return RESOK(enum esc_cu, leading_ones);
 			}
 		}
 	}
@@ -57,7 +57,7 @@ RESULT(char32_t) esc_mbtocp(const char8_t* str)
 
 	// from https://ziglang.org/documentation/0.15.2/std/#std.unicode.utf8Decode4
 	if (cu_type.val == ESC_CU_ASCII) {
-		return RESVAL(char32_t, str[0]);
+		return RESOK(char32_t, str[0]);
 	}
 	char32_t c = str[0] & 0b00000111;
 	for (size_t i = 1; i < cu_type.val; ++i) {
@@ -65,7 +65,7 @@ RESULT(char32_t) esc_mbtocp(const char8_t* str)
 		c |= str[i] & USED_MASK;
 	}
 
-	return RESVAL(char32_t, c);
+	return RESOK(char32_t, c);
 }
 
 RESULT(size_t) esc_cptomb(char8_t* dest, char32_t c)
@@ -75,22 +75,22 @@ RESULT(size_t) esc_cptomb(char8_t* dest, char32_t c)
 	constexpr uint8_t UNUSED_MASK = 0b10000000;
 	if (c <= 0x7F) {
 		dest[0] = c;
-		return RESVAL(size_t, 1);
+		return RESOK(size_t, 1);
 	} else if (c <= 0x7FF) {
 		dest[0] = 0b11000000  | (c >> 6);
 		dest[1] = UNUSED_MASK | (c & USED_MASK);
-		return RESVAL(size_t, 2);
+		return RESOK(size_t, 2);
 	} else if (c <= 0xFFFF) {
 		dest[0] = 0b11100000  | (c >> 12);
 		dest[1] = UNUSED_MASK | ((c >> 6) & USED_MASK);
 		dest[2] = UNUSED_MASK | (c        & USED_MASK);
-		return RESVAL(size_t, 3);
+		return RESOK(size_t, 3);
 	} else if (c <= 0x10FFFF) {
 		dest[0] = 0b11110000  | (c >> 18);
 		dest[1] = UNUSED_MASK | ((c >> 12) & USED_MASK);
 		dest[2] = UNUSED_MASK | ((c >> 6)  & USED_MASK);
 		dest[3] = UNUSED_MASK | (c         & USED_MASK);
-		return RESVAL(size_t, 4);
+		return RESOK(size_t, 4);
 	}
 	return RESERR(size_t, ESC_ERR_UNICODE_CP_INVALID);
 }

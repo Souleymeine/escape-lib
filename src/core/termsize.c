@@ -19,7 +19,7 @@ RESULT(struct esc_fontsize) esc_getfontsize()
 	const RESULT(struct esc_termsize) size = esc_gettermsize();
 	TRY(struct esc_fontsize, size);
 
-	return RESVAL(struct esc_fontsize, {
+	return RESOK(struct esc_fontsize, {
 		.xpix = size.val.xpix / size.val.cols,
 		.ypix = size.val.ypix / size.val.rows,
 	});
@@ -42,7 +42,7 @@ RESULT(struct esc_termsize) esc_gettermsize()
 
 	struct winsize size;
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-	return RESVAL(struct esc_termsize, {
+	return RESOK(struct esc_termsize, {
 		.rows = size.ws_row,
 		.cols = size.ws_col,
 		.xpix = iskernel_term ? fb_scrinfo.xres : size.ws_xpixel,
@@ -61,7 +61,7 @@ RESULT(struct esc_termsize) esc_gettermsize()
 	CONSOLE_SCREEN_BUFFER_INFO scrbuf_info;
 	GetConsoleScreenBufferInfo(esc_getstdout_h(), &scrbuf_info);
 
-	return RESVAL(struct esc_termsize, {
+	return RESOK(struct esc_termsize, {
 		.rows = scrbuf_info.dwSize.Y,
 		.cols = scrbuf_info.dwSize.X,
 		.xpix = conwin_rect.right - conwin_rect.left,
