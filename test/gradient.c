@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 	);
 	const char32_t cp = (argc == 1) ? U'é' : arg_cp.val;
 
-	const struct esc_termsize size = esc_gettermsize();
+	const struct esc_termsize size = esc_gettermsize().val;
 	for (uint16_t y = 0; y < size.rows; y++) {
 		for (uint16_t x = 0; x < size.cols; x++) {
 			(void)esc_setcp(cp, x, y);

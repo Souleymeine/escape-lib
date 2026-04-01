@@ -154,8 +154,9 @@ RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual
 
 	size_t arena_heapsize = 0;
 
-	const struct esc_termsize size = esc_gettermsize();
-	const size_t cell_count        = size.cols * size.rows;
+	const RESULT(struct esc_termsize) size = esc_gettermsize();
+	TRY(void, size);
+	const size_t cell_count        = size.val.cols * size.val.rows;
 
 	const size_t cts_bytesize     = cell_count * (sizeof(char_and_tag));
 	const size_t clrvals_bytesize = cell_count * (sizeof(union esc_clrval));
@@ -180,10 +181,10 @@ RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual
 	
 	size_t arena_ofst = 0;
 
-	grid_init(&g_pgrid, page.val, &arena_ofst, size, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
+	grid_init(&g_pgrid, page.val, &arena_ofst, size.val, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
 	assert(arena_ofst == grid_bytesize);
 	if (virtual_grid) {
-		grid_init(&g_vgrid, page.val, &arena_ofst, size, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
+		grid_init(&g_vgrid, page.val, &arena_ofst, size.val, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
 		assert(arena_ofst == 2 * grid_bytesize + PADDING_BETWEEN(grid_bytesize, union esc_clrval));
 	}
 

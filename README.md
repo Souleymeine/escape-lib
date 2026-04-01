@@ -57,9 +57,10 @@ As Zig only bundles libc implementations, **the ability to cross compile from an
 Also note that Zig is still not stable, bugs during build unrelated to the issues presented above *might* happen.
 
 ## Developpement scheme
-This project's branches names match the following regular expression : `(feature/|rework/|bugfix/|goal/)[a-zA-Z][-a-zA-Z0-9]*`.
-
-Before naming a branch, it's name can be tested with `$ echo "branch_name" | grep -E "[insert the regexp above]"`.
+This project's branches names match a certain regular expression and can be tested with :
+```
+$ echo "branch_name" | grep -E "(feature/|rework/|bugfix/|goal/)[a-zA-Z][-a-zA-Z0-9]*"
+```
 
 
 Depending on the category, the branch

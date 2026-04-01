@@ -83,9 +83,15 @@ struct esc_termsize {
 	uint16_t rows;
 	uint16_t xpix;
 	uint16_t ypix;
-};
+}; _ESC_RESULT_DECL(struct esc_termsize);
 
-struct esc_termsize esc_gettermsize();
+struct esc_fontsize {
+	uint16_t xpix;
+	uint16_t ypix;
+}; _ESC_RESULT_DECL(struct esc_fontsize);
+
+ESC_RESULT(struct esc_termsize) esc_gettermsize();
+ESC_RESULT(struct esc_fontsize) esc_getfontsize();
 
 enum esc_termflags {
 	ESC_TERM_ALTBUF   = 0x1,

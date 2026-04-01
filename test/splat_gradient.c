@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 
 	const char32_t cp = (argc == 1) ? U'é' : arg_cp.val;
 
-	const struct esc_termsize size = esc_gettermsize();
+	const struct esc_termsize size = esc_gettermsize().val;
 	const float increment = 0.05f;
 	float progress = 0;
 	do {
