@@ -69,7 +69,7 @@ RESULT(void) esc_settermflags(uint16_t flags)
 		: (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
 #endif
 
-	char8_t seq[14];
+	char8_t seq[16];
 	const size_t len = esc_seqcat(seq, ARRARG(struct esc_seqel, {
 		SEQSTRL(CSI), SEQSTRL("?1049"), SEQCHR(flags & ESC_TERM_ALTBUF ?   'h' : 'l'),
 		SEQSTRL(CSI), SEQSTRL("?25"),   SEQCHR(flags & ESC_TERM_NOCURSOR ? 'l' : 'h'),
