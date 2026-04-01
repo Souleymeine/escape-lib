@@ -38,7 +38,7 @@ struct strbuf {
 	float growth_rate;
 };
 
-struct rndr_arena {
+struct scrarena {
 	void* bytes;
 	size_t heapsize;
 };
@@ -46,7 +46,7 @@ struct rndr_arena {
 static struct grid g_pgrid;
 static struct grid g_vgrid;
 static struct strbuf g_strbuf;
-static struct rndr_arena g_rndr_arena;
+static struct scrarena g_rndr_arena;
 // indicates if the screen has been refreshed at least once
 static bool g_refreshed = false;
 static bool g_use_vgrid = false;
@@ -173,7 +173,7 @@ RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual
 
 	const RESULT_PTR(void) page = heapalloc(arena_heapsize);
 	TRY(void, page);
-	g_rndr_arena = (struct rndr_arena) {
+	g_rndr_arena = (struct scrarena) {
 		.bytes    = page.val,
 		.heapsize = arena_heapsize,
 	};
