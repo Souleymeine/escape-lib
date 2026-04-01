@@ -22,7 +22,7 @@ const tests: []const []const u8 = &.{
     "test/scrtxt.c",
     "test/seq.c",
     "test/splat_gradient.c",
-    "test/termsize.c",
+    "test/size.c",
 };
 
 const base_flags: []const []const u8 = &.{

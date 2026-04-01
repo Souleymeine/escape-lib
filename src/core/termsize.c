@@ -14,30 +14,44 @@
 #define ESC_SHORTHAND
 #include "../../include/core.h"
 
-RESULT(struct esc_fontsize) esc_getfontsize()
+RESULT(struct esc_cellsize) esc_getcellsize()
 {
 	const RESULT(struct esc_termsize) size = esc_gettermsize();
-	TRY(struct esc_fontsize, size);
+	TRY(struct esc_cellsize, size);
 
-	return RESOK(struct esc_fontsize, {
-		.xpix = size.val.xpix / size.val.cols,
-		.ypix = size.val.ypix / size.val.rows,
+	// cell size is always accurate in the kernel as there aren't really "margins" and integer division exludes them
+	// TODO : take margins into account for terminal emulators (unstable when zooming)
+	return RESOK(struct esc_cellsize, {
+		.xpix  = size.val.xpix / size.val.cols,
+		.ypix  = size.val.ypix / size.val.rows,
 	});
 }
+
+#if __unix__
+static bool is_dev_tty()
+{
+	const char* tty_abs_path = ttyname(STDOUT_FILENO);
+	return tty_abs_path ? (strncmp(tty_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
+}
+#endif
 
 RESULT(struct esc_termsize) esc_gettermsize()
 {
 #if __unix__
+	// Virtually all modern distros enable FB_DEV (which provides /dev/fb0), except custom kernels maybe (like mine),
+	// which isn't big of a deal when you use package managers like Portage which tell you what kernel param you need
+	// for what package anyway, no worries when it comes to compat.
 	struct fb_var_screeninfo fb_scrinfo;
-	const bool iskernel_term = (strncmp(ttyname(STDOUT_FILENO) + sizeof("/dev/") - 1, "tty", 3) == 0);
-	if (iskernel_term) {
-		// TODO : check if there is another way to get screen size without relying on kernel specific features
-		// FB_DEV can be disabled!
-		int fb = open("/dev/fb0", O_RDONLY);
+	// Actual terminals (thus managed by the kernel itself) are directly attached to a /dev/tty[0-9][0-9] device
+	// while terminal emulators use a slave (???) device called /dev/pts/[0-9][0-9]
+	const bool is_dev = is_dev_tty();
+	if (is_dev) {
+		int fb = open("/dev/fb0", O_RDONLY); // Only support 1 fb at the moment
 		if (fb == -1) {
-			return RESERR(struct esc_termsize, ESC_ERR_FBDEV_NOT_AVAILABLE);
+			return RESERR(struct esc_termsize, ESC_ERR_FB_DEV_NOT_SET);
 		}
 		ioctl(fb, FBIOGET_VSCREENINFO, &fb_scrinfo);
+		close(fb);
 	}
 
 	struct winsize size;
@@ -45,8 +59,8 @@ RESULT(struct esc_termsize) esc_gettermsize()
 	return RESOK(struct esc_termsize, {
 		.rows = size.ws_row,
 		.cols = size.ws_col,
-		.xpix = iskernel_term ? fb_scrinfo.xres : size.ws_xpixel,
-		.ypix = iskernel_term ? fb_scrinfo.yres : size.ws_ypixel,
+		.xpix = is_dev ? fb_scrinfo.xres_virtual : size.ws_xpixel,
+		.ypix = is_dev ? fb_scrinfo.yres_virtual : size.ws_ypixel,
 	});
 
 #elif _WIN32
