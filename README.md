@@ -114,6 +114,7 @@ The only things required to understand this library's source code are the follow
 - The C programming language in its C23 standard (last stable standard at the time of this commit).
 - These naming conventions you'll come across quite often:
     - `esc` is short for **esc**ape, the library's name, which is a funny abbreviation for *escape sequence*, because that's what the library deals with.
+    - `clr` is short for **c**o**l**o**r**
     - [`cu`](https://developer.mozilla.org/docs/Glossary/Code_unit) refers to a UTF-8 for **c**ode **u**nit
     - [`cp`](https://developer.mozilla.org/docs/Glossary/Code_point) refers to a Unicode **c**ode**p**oint
 - These macros:
@@ -140,7 +141,7 @@ The only things required to understand this library's source code are the follow
 - [ ] Account for other terminal emulators on Windows other than *conhost* and *Terminal*
 - [ ] Support WASM for [Xterm.js](https://xtermjs.org/)
 - [ ] Support OpenGL/Vulkan surfaces
-- [ ] Parallel screen rendering?
+- [ ] Provide all shorthand form macros (#ifdef ESC_SHORTHAND)
 - [ ] 24bit color driver for Linux/BSD's tty?
 - [ ] Try compiling and running with [Fil-C](https://fil-c.org/)
 - [ ] Doom in the linux kernel's tty, with mouse support!

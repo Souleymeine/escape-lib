@@ -10,16 +10,15 @@ const Build = std.Build;
 const lib_ver_str = "0.1.0";
 
 const sources: []const []const u8 = &.{
-    "src/utf.c",
-    "src/termsize.c",
-    "src/terminal.c",
-    "src/screen.c",
-    "src/escseq.c",
+    "src/core/term.c",
+    "src/core/termsize.c",
+    "src/core/escseq.c",
+    "src/rndr/unicode.c",
+    "src/rndr/screen.c",
 };
 const tests: []const []const u8 = &.{
     "test/gradient.c",
     "test/label_gradient.c",
-    "test/scralloc.c",
     "test/scrtxt.c",
     "test/seq.c",
     "test/splat_gradient.c",
@@ -30,8 +29,8 @@ const base_flags: []const []const u8 = &.{
     "-std=c23",
     "-Wall",
     "-Wextra",
-    "-pedantic",
-    "-ffreestanding",
+    "-Wvla",
+    "-pedantic-errors",
 };
 const release_flags: []const []const u8 = &.{
     "-Werror",

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "screen.h"
-#include "escseq.h"
-#include "terminal.h"
-#include "termsize.h"
-#include "utf.h"
+#include "core.h"
+#include "rndr.h"
+#include "io.h"
+#include "img.h"
+#include "2d.h"
+#include "3d.h"

@@ -1,10 +1,10 @@
 #include <stdio.h>
 
-#include "../include/termsize.h"
+#include "../include/core.h"
 
 int main()
 {
-	const struct termsize size = get_termsize();
+	const struct esc_termsize size = esc_gettermsize();
 	printf("cols: %d, rows: %d\nwidth: %dpx, heigh: %dpx\n", size.cols, size.rows, size.xpix, size.ypix);
 	return 0;
 }

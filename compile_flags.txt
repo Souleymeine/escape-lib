@@ -3,3 +3,4 @@
 -Wextra
 -std=c23
 -DDEBUG
+-pedantic-errors
