@@ -13,7 +13,7 @@ const sources: []const []const u8 = &.{
     "src/core/term.c",
     "src/core/termsize.c",
     "src/core/escseq.c",
-    "src/rndr/utf.c",
+    "src/rndr/unicode.c",
     "src/rndr/screen.c",
 };
 const tests: []const []const u8 = &.{
