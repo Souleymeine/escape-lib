@@ -17,12 +17,17 @@ int main(int argc, char* argv[])
 		return 1;
 	);
 
-	const RESULT(char32_t) arg_cp = esc_mbtocp(ESC_UTF8(argv[1]));
-	CATCH(arg_cp, err,
-		fprintf(stderr, "couldn't parse 1st arg as Unicode a codepoint, error code (esc_mbtocp): %d\nexiting", err);
-		return 1;
-	);
-	const char32_t cp = (argc == 1) ? U'é' : arg_cp.val;
+	char32_t cp;
+	if (argc == 2) {
+		const RESULT(char32_t) arg_cp = esc_mbtocp(ESC_UTF8(argv[1]));
+		CATCH(arg_cp, err,
+			fprintf(stderr, "couldn't parse 1st arg as Unicode a codepoint, error code (esc_mbtocp): %d\nexiting\n", err);
+			return 1;
+		);
+		cp = arg_cp.val;
+	} else {
+		cp = U'é';
+	}
 
 	const struct esc_termsize size = esc_gettermsize().val;
 	for (uint16_t y = 0; y < size.rows; y++) {
