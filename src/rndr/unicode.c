@@ -5,6 +5,8 @@
 #define ESC_SHORTHAND
 #include "../../include/rndr.h"
 
+#define ISASCII(c) (c < 0b10000000)
+
 RESULT(enum esc_cu) esc_getcu(char8_t c)
 {
 	/** See https://www.rfc-editor.org/rfc/rfc3629#section-3
@@ -18,7 +20,7 @@ RESULT(enum esc_cu) esc_getcu(char8_t c)
 	 * 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
 	 * 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 	 */
-	if (stdc_bit_width(c) < 8) {
+	if (ISASCII(c)) {
 		return RESOK(enum esc_cu, ESC_CU_ASCII);
 	} else {
 		const uint8_t leading_ones = stdc_leading_ones_uc(c);
@@ -44,8 +46,6 @@ OPT(size_t) esc_getinvcu(const char8_t* str, size_t len)
 	return OPTNONE(size_t);
 }
 
-constexpr uint8_t USED_MASK = 0b00111111;
-
 RESULT(char32_t) esc_mbtocp(const char8_t* str)
 {
 	// Try validate string
@@ -62,36 +62,39 @@ RESULT(char32_t) esc_mbtocp(const char8_t* str)
 	char32_t c = str[0] & 0b00000111;
 	for (size_t i = 1; i < cu_type.val; ++i) {
 		c <<= 6;
-		c |= str[i] & USED_MASK;
+		c |= str[i] & 0b00111111;
 	}
-
 	return RESOK(char32_t, c);
 }
 
 RESULT(size_t) esc_cptomb(char8_t* dest, char32_t c)
 {
-	// From : https://stackoverflow.com/questions/42012563/convert-unicode-code-points-to-utf-8-and-utf-32
-	// TODO : find the core logic and refactor if it's faster
-	constexpr uint8_t UNUSED_MASK = 0b10000000;
-	if (c <= 0x7F) {
+	// Original from https://www.lua.org/source/5.5/lobject.c.html#luaO_utf8esc
+	// Thanks to halalaluyafail3 on the Together C & C++ discord server!
+
+	if (c > 0x10FFFF || (c >= 0xd800 && c <= 0xdfff)) { // Invalid UTF-8 ranges
+		return RESERR(size_t, ESC_ERR_UNICODE_CP_INVALID);
+	}
+
+	if (ISASCII(c)) {
 		dest[0] = c;
 		return RESOK(size_t, 1);
-	} else if (c <= 0x7FF) {
-		dest[0] = 0b11000000  | (c >> 6);
-		dest[1] = UNUSED_MASK | (c & USED_MASK);
-		return RESOK(size_t, 2);
-	} else if (c <= 0xFFFF) {
-		dest[0] = 0b11100000  | (c >> 12);
-		dest[1] = UNUSED_MASK | ((c >> 6) & USED_MASK);
-		dest[2] = UNUSED_MASK | (c        & USED_MASK);
-		return RESOK(size_t, 3);
-	} else if (c <= 0x10FFFF) {
-		dest[0] = 0b11110000  | (c >> 18);
-		dest[1] = UNUSED_MASK | ((c >> 12) & USED_MASK);
-		dest[2] = UNUSED_MASK | ((c >> 6)  & USED_MASK);
-		dest[3] = UNUSED_MASK | (c         & USED_MASK);
-		return RESOK(size_t, 4);
 	}
-	return RESERR(size_t, ESC_ERR_UNICODE_CP_INVALID);
+	_BitInt(3) n = 1;          // number of bytes put in buffer (backwards)
+	uint32_t mfb = 0b00111111; // maximum that fits in first byte
+	do {
+		dest[n++ - 1] = 0b10000000 | (c & 0b00111111);
+		c   >>= 6;  // remove added bits
+		mfb >>= 1;  // now there is one less bit available in first byte
+	} while (c > mfb); // still needs continuation byte?
+	dest[n - 1] = (~mfb << 1) | c;  // add first byte
+	// We cannot know how many UTF-8 cu's there are without doing another pass. Reversing never more than 4 bytes is fast anyways :p
+	for (_BitInt(3) i = 0; i < n - 1; i++) {
+		const char8_t temp = dest[i];
+		dest[i] = dest[n - 1 - i];
+		dest[n - 1 - i] = temp;
+	}
+
+	return RESOK(size_t, n);
 }
 
