@@ -14,7 +14,7 @@
 /* --- Global state --- */
 
 typedef struct {
-	char32_t c: 21;
+	_BitInt(21) c: 21;
 	enum esc_clrtag bgclr_tag: 2;
 	enum esc_clrtag fgclr_tag: 2;
 	bool visible: 1;
