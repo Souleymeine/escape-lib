@@ -39,7 +39,8 @@ RESULT(struct esc_termsize) esc_gettermsize()
 		.ypix = ws.ws_ypixel,
 	};
 #  if __linux__ // The Linux kernel doesn't provide ws_xpixel and ws_ypixel in its terminal, we work around that :
-	/* Terminal devices are exposed through /dev/tty[0-9][0-9] while terminal emulators use slave (?) devices called /dev/pts/[0-9][0-9].
+	/* Terminal devices are exposed through /dev/tty(S|USB|ACM|AMA|SAC)?[0-9]+ while terminal emulators use slave (?) devices called /dev/pts/[0-9]+
+	 * If curious, see https://unix.stackexchange.com/questions/307390/what-is-the-difference-between-ttys0-ttyusb0-and-ttyama0-in-linux
 	 * This is how we differentiate kernel-level terminals and terminal emulators. */
 	const char* dev_abs_path = ttyname(STDOUT_FILENO);
 	const bool dev_standalone = dev_abs_path ? (strncmp(dev_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
