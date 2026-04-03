@@ -27,41 +27,41 @@ RESULT(struct esc_cellsize) esc_getcellsize()
 	});
 }
 
-#if __unix__
-static bool is_dev_tty()
-{
-	const char* tty_abs_path = ttyname(STDOUT_FILENO);
-	return tty_abs_path ? (strncmp(tty_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
-}
-#endif
-
 RESULT(struct esc_termsize) esc_gettermsize()
 {
 #if __unix__
-	// Virtually all modern distros enable FB_DEV (which provides /dev/fb0), except custom kernels maybe (like mine),
-	// which isn't big of a deal when you use package managers like Portage which tell you what kernel param you need
-	// for what package anyway, no worries when it comes to compat.
-	struct fb_var_screeninfo fb_scrinfo;
-	// Actual terminals (thus managed by the kernel itself) are directly attached to a /dev/tty[0-9][0-9] device
-	// while terminal emulators use a slave (???) device called /dev/pts/[0-9][0-9]
-	const bool is_dev = is_dev_tty();
-	if (is_dev) {
-		int fb = open("/dev/fb0", O_RDONLY); // Only support 1 fb at the moment
+
+	struct winsize ws;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
+	struct esc_termsize ret = (struct esc_termsize) {
+		.rows = ws.ws_row,
+		.cols = ws.ws_col,
+		.xpix = ws.ws_xpixel,
+		.ypix = ws.ws_ypixel,
+	};
+#  if __linux__ // The Linux kernel doesn't provide ws_xpixel and ws_ypixel in its terminal, we work around that :
+	/* Terminal devices are exposed through /dev/tty[0-9][0-9] while terminal emulators use slave (?) devices called /dev/pts/[0-9][0-9].
+	 * This is how we differentiate kernel-level terminals and terminal emulators.
+	 * See https://www.kernel.org/doc/html/latest/fb/framebuffer.html for more details. */
+	const char* tty_abs_path = ttyname(STDOUT_FILENO);
+	const bool is_kdev = tty_abs_path ? (strncmp(tty_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
+	if (is_kdev) {
+		// Virtually all distros enable FB_DEVICE (which provides /dev/fbX), except some custom kernels (like mine)
+		int fb = open("/dev/fb0", O_RDONLY); // TODO : Does the kernel provide fbX for terminals other screens?
 		if (fb == -1) {
-			return RESERR(struct esc_termsize, ESC_ERR_FB_DEV_NOT_SET);
+			return RESERR(struct esc_termsize, ESC_ERR_FB_DEVICE_NOT_SET);
 		}
-		ioctl(fb, FBIOGET_VSCREENINFO, &fb_scrinfo);
+
+		struct fb_var_screeninfo fbinfo;
+		ioctl(fb, FBIOGET_VSCREENINFO, &fbinfo);
+		ret.xpix = fbinfo.xres_virtual;
+		ret.ypix = fbinfo.yres_virtual;
+
 		close(fb);
 	}
+#  endif
 
-	struct winsize size;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-	return RESOK(struct esc_termsize, {
-		.rows = size.ws_row,
-		.cols = size.ws_col,
-		.xpix = is_dev ? fb_scrinfo.xres_virtual : size.ws_xpixel,
-		.ypix = is_dev ? fb_scrinfo.yres_virtual : size.ws_ypixel,
-	});
+	return RESOK(struct esc_termsize, ret);
 
 #elif _WIN32
 
