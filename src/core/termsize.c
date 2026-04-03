@@ -1,14 +1,13 @@
-#include <string.h>
 #if _WIN32
 #include <windows.h>
 #elif __unix__
-#if __linux__
-#include <linux/fb.h>
-#endif
 #include <sys/ioctl.h>
-#include <termios.h>
 #include <unistd.h>
+#endif
+#if __linux__
+#include <string.h>
 #include <fcntl.h>
+#include <linux/fb.h>
 #endif
 
 #define ESC_SHORTHAND
@@ -33,31 +32,30 @@ RESULT(struct esc_termsize) esc_gettermsize()
 
 	struct winsize ws;
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
-	struct esc_termsize ret = (struct esc_termsize) {
-		.rows = ws.ws_row,
+	struct esc_termsize ret = {
 		.cols = ws.ws_col,
+		.rows = ws.ws_row,
 		.xpix = ws.ws_xpixel,
 		.ypix = ws.ws_ypixel,
 	};
 #  if __linux__ // The Linux kernel doesn't provide ws_xpixel and ws_ypixel in its terminal, we work around that :
 	/* Terminal devices are exposed through /dev/tty[0-9][0-9] while terminal emulators use slave (?) devices called /dev/pts/[0-9][0-9].
-	 * This is how we differentiate kernel-level terminals and terminal emulators.
-	 * See https://www.kernel.org/doc/html/latest/fb/framebuffer.html for more details. */
-	const char* tty_abs_path = ttyname(STDOUT_FILENO);
-	const bool is_kdev = tty_abs_path ? (strncmp(tty_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
-	if (is_kdev) {
+	 * This is how we differentiate kernel-level terminals and terminal emulators. */
+	const char* dev_abs_path = ttyname(STDOUT_FILENO);
+	const bool dev_standalone = dev_abs_path ? (strncmp(dev_abs_path + STRLLEN("/dev/"), "tty", 3) == 0) : false;
+	if (dev_standalone) {
 		// Virtually all distros enable FB_DEVICE (which provides /dev/fbX), except some custom kernels (like mine)
-		int fb = open("/dev/fb0", O_RDONLY); // TODO : Does the kernel provide fbX for terminals other screens?
+		int fb = open("/dev/fb0", O_RDONLY); // TODO : Does the kernel provide fbX for terminals displayed on other screens?
 		if (fb == -1) {
 			return RESERR(struct esc_termsize, ESC_ERR_FB_DEVICE_NOT_SET);
 		}
 
+		// See https://www.kernel.org/doc/html/latest/fb/framebuffer.html for more details.
 		struct fb_var_screeninfo fbinfo;
 		ioctl(fb, FBIOGET_VSCREENINFO, &fbinfo);
+		close(fb);
 		ret.xpix = fbinfo.xres_virtual;
 		ret.ypix = fbinfo.yres_virtual;
-
-		close(fb);
 	}
 #  endif
 
@@ -76,8 +74,8 @@ RESULT(struct esc_termsize) esc_gettermsize()
 	GetConsoleScreenBufferInfo(esc_getstdout_h(), &scrbuf_info);
 
 	return RESOK(struct esc_termsize, {
-		.rows = scrbuf_info.dwSize.Y,
 		.cols = scrbuf_info.dwSize.X,
+		.rows = scrbuf_info.dwSize.Y,
 		.xpix = conwin_rect.right - conwin_rect.left,
 		.ypix = conwin_rect.bottom - conwin_rect.top,
 	});
