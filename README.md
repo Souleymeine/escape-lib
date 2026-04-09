@@ -59,12 +59,12 @@ Also note that Zig is still not stable, bugs during build unrelated to the issue
 ## Developpement scheme
 This project's branches names match a certain regular expression and can be tested with :
 ```
-$ echo "branch_name" | grep -E "(feature/|rework/|bugfix/|goal/)[a-zA-Z][-a-zA-Z0-9]*"
+$ echo "branch_name" | grep -E "((feature|rework|bugfix|goal)/(core|io|rndr|img|2d|3d|)|(meta))/[a-zA-Z][-a-zA-Z0-9]*"
 ```
 
 
 Depending on the category, the branch
-- **goal**    : fully implements a draft for a desired feature or use case with existing library code, with the goal of re-implementing said draft with a future **feature** branches. A single **goal** branch may have multiple follow up **feature** branches, or none, if the draft is deemed acceptable as-is and thus only adds one example in `test/`.
+- **goal**    : (optional) fully implements a draft for a desired feature or use case with existing library code, with the goal of re-implementing said draft with a future **feature** branches. A single **goal** branch may have multiple follow up **feature** branches, or none, if the draft is deemed acceptable as-is and thus only adds one example in `test/`.
 - **feature** : adds a new feature, incrementing the minor or the major version if it includes breaking changes.
 - **bugfix**  : fixes a bug, incrementing the patch version.
 - **rework**  : reviews how an already implemented feature works or deletes one.
