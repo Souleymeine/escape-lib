@@ -129,11 +129,11 @@ The only things required to understand this library's source code are the follow
 - [ ] Cross-platform terminal-independant escape sequences management : [replacement for termcaps/terminfo](https://lobste.rs/s/m1j4b4/terminfo_at_this_point_time_is_net)
 - [ ] Asbtraction layer above device/kernel specific interaction mechanism with stdin/stdout and the console/tty itself (for instance, a crossplatform `getch`)
 - [ ] IO events and resizing.
-- [ ] Find the best algorithm for `srefresh` (non-heuristic if possible)
-- [ ] "Immediate" mode, as opposed to retained mode when using `TERM_ALTBUF`
-- [ ] UI layout (as en extension)
-- [ ] Image processing (as an extension)
-- [ ] Make screen a unique and global data structure, no need to have multiple
+- [ ] Find the best algorithm for `refresh` (non-heuristic if possible)
+- [ ] "Immediate" mode, as opposed to retained mode when using `ESC_TERM_ALTBUF`
+- [ ] UI layout
+- [ ] Image processing
+- [x] Make screen a unique and global data structure, no need to have multiple
 - [ ] Bindings for [clay](https://github.com/nicbarker/clay/tree/main/renderers/terminal) and implementation
 - [x] Limit the usage of the standard library to bit utilities (stdbit.h) and system calls (no C runtime, like malloc, printf, fopen, ...)
 - [ ] statically link against musl or homemade syscall lib to only get syscalls and possibly inline them in libescape with LTO and get rid of glibc entirely
