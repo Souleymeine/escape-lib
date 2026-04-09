@@ -85,6 +85,7 @@ enum esc_error {
 // core
 	ESC_ERR_TERMWRITE_FAILED,
 	ESC_ERR_TERMWRITE_TRUNCATED,
+	ESC_ERR_FB_DEVICE_NOT_SET,
 // io
 // rndr
 	ESC_ERR_UNICODE_CP_INVALID,
@@ -134,10 +135,10 @@ _ESC_OPT_DECL(uint32_t);
 #define CATCH               ESC_CATCH
 #define RESULT              ESC_RESULT
 #define RESULT_PTR          ESC_RESULT_PTR
-#define RESVAL              ESC_RESVAL
+#define RESOK               ESC_RESOK
 #define RESERR              ESC_RESERR
 #define RESNOERR            ESC_RESNOERR
-#define RESPTRVAL           ESC_RESPTRVAL
+#define RESPTROK            ESC_RESPTROK
 #define RESPTRERR           ESC_RESPTRERR
 #define RESPTRERRNOERR      ESC_RESPTRNOERR
 #define OPT                 ESC_OPT
@@ -152,11 +153,11 @@ _ESC_OPT_DECL(uint32_t);
 #define ESC_RESULT_PTR(T) struct ESC_RESULT_TYPENAME_PTR(T)
 
 // Variadics to remove the necessity of parenthesis when using inline structs or array literals
-#define ESC_RESVAL(T, ...) (ESC_RESULT(T)) {.val = (T) __VA_ARGS__, .err = 0}
+#define ESC_RESOK(T, ...)  (ESC_RESULT(T)) {.val = __VA_ARGS__, .err = 0}
 #define ESC_RESERR(T, e)   (ESC_RESULT(T)) {.err = e}
 #define ESC_RESNOERR(T)    (ESC_RESULT(T)) {.err = 0}
 
-#define ESC_RESPTRVAL(T, ...) (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
+#define ESC_RESPTROK(T, ...)  (ESC_RESULT_PTR(T)) {.val = __VA_ARGS__, .err = 0}
 #define ESC_RESPTRERR(T, e)   (ESC_RESULT_PTR(T)) {.err = e}
 #define ESC_RESPTRNOERR(T)    (ESC_RESULT_PTR(T)) {.err = 0}
 

@@ -14,7 +14,7 @@
 /* --- Global state --- */
 
 typedef struct {
-	char32_t c: 21;
+	_BitInt(21) c: 21;
 	enum esc_clrtag bgclr_tag: 2;
 	enum esc_clrtag fgclr_tag: 2;
 	bool visible: 1;
@@ -64,7 +64,7 @@ static bool g_use_vgrid = false;
 static RESULT_PTR(void) heapalloc(size_t pagesize)
 {
 #if STD_MALLOC
-	return RESPTRVAL(void, malloc(pagesize));
+	return RESPTROK(void, malloc(pagesize));
 	// TODO : handle all relevant values of errno
 #else
 #if __unix__
@@ -77,7 +77,7 @@ static RESULT_PTR(void) heapalloc(size_t pagesize)
 #endif
 		return RESPTRERR(void, ESC_ERR_OOM);
 	}
-	return RESPTRVAL(void, page);
+	return RESPTROK(void, page);
 #endif /* STD_MALLOC */
 }
 
@@ -154,8 +154,9 @@ RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual
 
 	size_t arena_heapsize = 0;
 
-	const struct esc_termsize size = esc_gettermsize();
-	const size_t cell_count        = size.cols * size.rows;
+	const RESULT(struct esc_termsize) size = esc_gettermsize();
+	TRY(void, size);
+	const size_t cell_count        = size.val.cols * size.val.rows;
 
 	const size_t cts_bytesize     = cell_count * (sizeof(char_and_tag));
 	const size_t clrvals_bytesize = cell_count * (sizeof(union esc_clrval));
@@ -180,10 +181,10 @@ RESULT(void) esc_initscr(const struct esc_strbuf_impl* strbuf_impl, bool virtual
 	
 	size_t arena_ofst = 0;
 
-	grid_init(&g_pgrid, page.val, &arena_ofst, size, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
+	grid_init(&g_pgrid, page.val, &arena_ofst, size.val, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
 	assert(arena_ofst == grid_bytesize);
 	if (virtual_grid) {
-		grid_init(&g_vgrid, page.val, &arena_ofst, size, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
+		grid_init(&g_vgrid, page.val, &arena_ofst, size.val, bgclr, fgclr, cts_bytesize, clrvals_bytesize);
 		assert(arena_ofst == 2 * grid_bytesize + PADDING_BETWEEN(grid_bytesize, union esc_clrval));
 	}
 
@@ -357,7 +358,7 @@ RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 
 	const uint16_t y = i / g_pgrid.size.cols;
 	const uint16_t x = i - y * g_pgrid.size.cols;
-	return RESVAL(struct esc_coord, {
+	return RESOK(struct esc_coord, {
 		.y = y,
 		.x = x,
 	});
@@ -366,7 +367,7 @@ RESULT(struct esc_coord) esc_idxtocoord(size_t i)
 RESULT(size_t) esc_coordtoidx(uint16_t x, uint16_t y)
 {
 	TRY(size_t, grid_boundscheck(x, y));
-	return RESVAL(size_t, y * g_pgrid.size.cols + x);
+	return RESOK(size_t, y * g_pgrid.size.cols + x);
 }
 
 RESULT(void) esc_setcp(char32_t c, uint16_t x, uint16_t y)

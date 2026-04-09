@@ -41,13 +41,15 @@ struct esc_seqel {
 #define ESC_SEQEL_MAX_PARAM 13 // RGB is the biggest known for now
 
 #define ESC_SEQSTR(s, l) (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = l}
-#define ESC_SEQSTRL(s)   (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = sizeof(s) - 1} // FOR STRING LITERALS ONLY!
+#define ESC_SEQSTRL(s)   (struct esc_seqel){.tag = ESC_FMT_STR, .str.buf = s, .str.len = ESC_STRLLEN(s)} // FOR STRING LITERALS ONLY!
 #define ESC_SEQCHR(c)    (struct esc_seqel){.tag = ESC_FMT_CHR, .uint8 = c}
 #define ESC_SEQU8(n)     (struct esc_seqel){.tag = ESC_FMT_U8,  .uint8 = n}
 #define ESC_SEQU16(n)    (struct esc_seqel){.tag = ESC_FMT_U16, .uint16 = n}
 
 #define ESC_ARRARG(T, ...) (T[])__VA_ARGS__, sizeof((T[])__VA_ARGS__)/sizeof(T)
-#define ESC_STRLARG(s)     s, sizeof(s) - 1
+#define ESC_STRLARG(s)     s, ESC_STRLLEN(s)
+
+#define ESC_STRLLEN(s) (sizeof(s) - 1)
 
 #ifdef ESC_SHORTHAND
 #define SEQEL_MAX_PARAM  ESC_SEQEL_MAX_PARAM
@@ -62,6 +64,7 @@ struct esc_seqel {
 #define SEQCHR  ESC_SEQCHR
 #define SEQU8   ESC_SEQU8
 #define SEQU16  ESC_SEQU16
+#define STRLLEN ESC_STRLLEN
 #endif
 
 /** Returns the number of digits in base 10 of 16 bit unsigned int x */
@@ -83,9 +86,15 @@ struct esc_termsize {
 	uint16_t rows;
 	uint16_t xpix;
 	uint16_t ypix;
-};
+}; _ESC_RESULT_DECL(struct esc_termsize);
 
-struct esc_termsize esc_gettermsize();
+struct esc_cellsize {
+	uint16_t xpix;
+	uint16_t ypix;
+}; _ESC_RESULT_DECL(struct esc_cellsize);
+
+ESC_RESULT(struct esc_termsize) esc_gettermsize();
+ESC_RESULT(struct esc_cellsize) esc_getcellsize();
 
 enum esc_termflags {
 	ESC_TERM_ALTBUF   = 0x1,
