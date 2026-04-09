@@ -12,7 +12,11 @@ int main()
 	);
 	printf("cols: %d, rows: %d\nwidth: %dpx, heigh: %dpx\n\n", term.val.cols, term.val.rows, term.val.xpix, term.val.ypix);
 
-	const struct esc_cellsize font = esc_getcellsize().val;
-	printf("cellx: %d, celly: %d\nratio: %0.2f\n", font.xpix, font.ypix, (float)font.ypix / font.xpix);
+	const RESULT(struct esc_cellsize) font = esc_getcellsize();
+	CATCH(font, err,
+		fprintf(stderr, "esc_getcellsize failed? error code: %d\n", err);
+		return 1;
+	);
+	printf("cellx: %d, celly: %d\nratio: %0.2f\n", font.val.xpix, font.val.ypix, (float)font.val.ypix / font.val.xpix);
 	return 0;
 }
