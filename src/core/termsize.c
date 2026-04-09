@@ -28,6 +28,7 @@ RESULT(struct esc_cellsize) esc_getcellsize()
 
 RESULT(struct esc_termsize) esc_gettermsize()
 {
+	// TODO : doesn't work with nvim's integrated terminal
 #if __unix__
 
 	struct winsize ws;
