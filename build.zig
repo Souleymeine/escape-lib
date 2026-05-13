@@ -1,5 +1,6 @@
 const std = @import("std");
 const path = std.fs.path;
+const enums = std.enums;
 const LinkMode = std.builtin.LinkMode;
 const OptimizeMode = std.builtin.OptimizeMode;
 const LtoMode = std.zig.LtoMode;
@@ -55,8 +56,8 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
 
     if (everything) {
-        inline for (comptime std.enums.values(OptimizeMode)) |o| {
-            inline for (comptime std.enums.values(LinkMode)) |l| {
+        inline for (comptime enums.values(OptimizeMode)) |o| {
+            inline for (comptime enums.values(LinkMode)) |l| {
                 try installStep(b, emit_asm, tests, null, target, o, l);
             }
         }
