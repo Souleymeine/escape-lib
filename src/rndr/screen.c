@@ -341,15 +341,11 @@ RESULT(void) esc_refresh(bool clear)
 static RESULT(void) grid_boundscheck(uint16_t x, uint16_t y)
 {
 	if (x > g_pgrid.size.cols) {
-		if (y > g_pgrid.size.rows) goto xy_oob;
-		return RESERR(void, ESC_ERR_CELL_X_OOB);
+		return RESERR(void, y > g_pgrid.size.rows ? ESC_ERR_CELL_XY_OOB : ESC_ERR_CELL_X_OOB);
 	} else if (y > g_pgrid.size.rows) {
-		if (x > g_pgrid.size.cols) goto xy_oob;
-		return RESERR(void, ESC_ERR_CELL_Y_OOB);
+		return RESERR(void, x > g_pgrid.size.cols ? ESC_ERR_CELL_XY_OOB : ESC_ERR_CELL_Y_OOB);
 	}
 	return RESNOERR(void);
-xy_oob: // goto ftw! (-- https://godbolt.org/z/s8j71cn45 -- , smaller code)
-	return RESERR(void, ESC_ERR_CELL_XY_OOB);
 }
 
 RESULT(struct esc_coord) esc_idxtocoord(size_t i)
