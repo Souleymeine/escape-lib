@@ -119,7 +119,7 @@ The only things required to understand this library's source code are the follow
     - [`cu`](https://developer.mozilla.org/docs/Glossary/Code_unit) refers to a UTF-8 for **c**ode **u**nit
     - [`cp`](https://developer.mozilla.org/docs/Glossary/Code_point) refers to a Unicode **c**ode**p**oint
 - These macros:
-    - `ESC_ERRUNION(T)` expands to a tagged union (struct containing union + which value is active) to declare functions that can return an error (of some enum type defined as such) or some value of type `T`.
+    - `ESC_RESULT(T)` expands to a struct with an error of type `escerr` and a value of type `T`. You could think of it as tagged union with the value being effective if the error is 0. Heavily inspired by Zig's error unions but really easy to use in practice and doesn't pollute the user's codebase with verbose error handling shinanagans!
 
 ## TODO
 **This list is not exaustive and is subject to impeding change. It also does not include "*goals*" (defined above)**
