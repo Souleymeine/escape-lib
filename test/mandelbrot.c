@@ -9,7 +9,7 @@
 
 int main()
 {
-	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF | ESC_TERM_NOLINEBUFFERING)), err,
+	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF | ESC_TERM_NONCANON)), err,
 		fprintf(stderr, "Error code (esc_init): %d\nexiting.", err);
 		return 1;
 	);

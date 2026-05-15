@@ -58,7 +58,7 @@ RESULT(void) esc_settermflags(uint16_t flags)
 	g_termattr.c_lflag = (flags & ESC_TERM_NOECHO)
 		? g_termattr.c_lflag & (~ECHO)
 		: g_termattr.c_lflag | ECHO;
-	g_termattr.c_lflag = (flags & ESC_TERM_NOLINEBUFFERING)
+	g_termattr.c_lflag = (flags & ESC_TERM_NONCANON)
 		? g_termattr.c_lflag & (~ICANON)
 		: g_termattr.c_lflag | ICANON;
 	tcsetattr(STDIN_FILENO, TCSANOW, &g_termattr);
