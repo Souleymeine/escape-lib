@@ -97,9 +97,10 @@ ESC_RESULT(struct esc_termsize) esc_gettermsize();
 ESC_RESULT(struct esc_cellsize) esc_getcellsize();
 
 enum esc_termflags {
-	ESC_TERM_ALTBUF   = 0x1,
-	ESC_TERM_NOCURSOR = 0x2,
-	ESC_TERM_NOECHO   = 0x4,
+	ESC_TERM_ALTBUF          = 0x1,
+	ESC_TERM_NOCURSOR        = 0x2,
+	ESC_TERM_NOECHO          = 0x4,
+	ESC_TERM_NOLINEBUFFERING = 0x8,
 };
 
 enum esc_stdstream {

@@ -58,7 +58,11 @@ RESULT(void) esc_settermflags(uint16_t flags)
 	g_termattr.c_lflag = (flags & ESC_TERM_NOECHO)
 		? g_termattr.c_lflag & (~ECHO)
 		: g_termattr.c_lflag | ECHO;
-	tcsetattr(STDIN_FILENO, 0, &g_termattr);
+	g_termattr.c_lflag = (flags & ESC_TERM_NOLINEBUFFERING)
+		? g_termattr.c_lflag & (~ICANON)
+		: g_termattr.c_lflag | ICANON;
+	tcsetattr(STDIN_FILENO, TCSANOW, &g_termattr);
+
 #elif _WIN32
 	/* "This mode [`ENABLE_ECHO_INPUT`] can be used only if the ENABLE_LINE_INPUT mode is also enabled."
 	 * - https://learn.microsoft.com/en-us/windows/console/setconsolemode

@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[])
 {
-	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF)), err,
+	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF | ESC_TERM_NOLINEBUFFERING)), err,
 		fprintf(stderr, "Couldn't init escape, error code (esc_init): %d\nexiting.", err);
 		return 1;
 	);
@@ -26,7 +26,8 @@ int main(int argc, char* argv[])
 	const struct esc_termsize size = esc_gettermsize().val;
 	const float increment = 0.05f;
 	float progress = 0;
-	do {
+	bool done = false;
+	while (!done) {
 		for (uint16_t y = 0; y < size.rows; y++) {
 			for (uint16_t x = 0; x < size.cols; x++) {
 				(void)esc_setcp(cp, x, y);
@@ -39,7 +40,10 @@ int main(int argc, char* argv[])
 		}
 		progress += increment;
 		(void)esc_refresh(false);
-	} while (getchar() != '\x1b');
+		if (getchar() == '\x1b') {
+			done = true;
+		}
+	};
 
 	esc_cleanup();
 	return 0;

@@ -7,9 +7,9 @@
 #include "../include/rndr.h"
 #include "../include/core.h"
 
-int main(int argc, char* argv[])
+int main()
 {
-	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF)), err,
+	CATCH(esc_init(OPTSOME(uint16_t, ESC_TERM_NOECHO | ESC_TERM_NOCURSOR | ESC_TERM_ALTBUF | ESC_TERM_NOLINEBUFFERING)), err,
 		fprintf(stderr, "Error code (esc_init): %d\nexiting.", err);
 		return 1;
 	);
@@ -19,20 +19,10 @@ int main(int argc, char* argv[])
 		return 1;
 	);
 
-	static struct termios oldt, newt;
-	tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON);          
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-
     size_t max_iteration = 100;
 	const struct esc_termsize size = esc_gettermsize().val;
-	do {
-		switch (getchar()) {
-			case '+': max_iteration++; break;
-			case '-': if (max_iteration > 1) max_iteration--; break;
-		}
-
+	bool done = false;
+	while (!done) {
 		for (uint16_t cy = 0; cy < size.rows; cy++) {
 			for (uint16_t cx = 0; cx < size.cols; cx++) {
 				const double x0 = (double)cx / size.cols * 2.47 - 2;
@@ -48,10 +38,14 @@ int main(int argc, char* argv[])
 			}
 		}
 		CATCH(esc_refresh(false), err, fprintf(stderr, "Error code (esc_refresh): %d", err));
-	} while (getchar() != '\x1b');
+		switch (getchar()) {
+			case '+': max_iteration++; break;
+			case '-': if (max_iteration > 1) max_iteration--; break;
+			case '\x1b': done = true; break;
+		}
+	};
 
 	esc_cleanup();
-	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 	return 0;
 }
 
